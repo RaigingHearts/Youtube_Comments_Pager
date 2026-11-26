@@ -1,0 +1,13 @@
+{
+    "channel_icon": true,
+    "video_title": true,
+    "video_description": false,
+    "video_thumbnail": true,
+    "video_meta": true,
+    "comment_author": true,
+    "comment_text": true,
+    "comment_meta": true,
+    "reply_author": true,
+    "reply_text": true,
+    "reply_meta": true
+}

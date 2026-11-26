@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ video.snippet.title if video else 'コメント表示ページ' }}</title>
+    <link rel="stylesheet" href="{{ static_url('css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="header-title">YouTube コメントページ</h1>
+        </header>
+
+        {% if video %}
+        <section class="video-info-section">
+            <div class="video-card">
+                <h2 class="video-title">{{ video.snippet.title if video else '動画タイトルがありません' }}</h2>
+                <div class="channel-card">
+                    <table><tbody><tr>
+                        <td>{% if video.snippet.channelThumbnailUrl %}<img src="{{ video.snippet.channelThumbnailUrl }}" 
+                        alt="チャンネルアイコン" class="channel-icon" 
+                        onerror="this.onerror=null;this.src='https://placehold.co/60x60/cccccc/ffffff?text=No+Icon';">
+                        {% endif %}</td>
+                        <td><strong>{{ video.snippet.channelTitle }}</strong></td>
+                    </tr></tbody></table>
+                </div>
+                {% if video.snippet.thumbnails.high.url %}
+                <div class="video-thumbnail-container">
+                    <img src="{{ video.snippet.thumbnails.high.url }}" 
+                    alt="動画サムネイル" class="video-thumbnail" 
+                    onerror="this.onerror=null;this.src='https://placehold.co/480x270/cccccc/ffffff?text=No+Thumbnail';">
+                </div>
+                {% endif %}
+                {% if video.snippet.description %}
+                <div class="video-description">
+                    <h3>動画説明</h3>
+                    <p>{{ video.snippet.description }}</p>
+                </div>
+                {% endif %}
+                <div class="video-meta">
+                    <p>公開日時: {{ video.snippet.publishedAt }}</p>
+                </div>
+                </div>
+        </section>
+        {% endif %}
+
+        <section class="comments-section">
+            <h2>コメント</h2>
+            {% if comments %}
+            <div class="comment-list">
+                {% for comment in comments %}
+                <div class="comment-thread">
+                    <div class="comment-card main-comment">
+                        <p class="comment-author">{{ comment.authorDisplayName }}</p>
+                        <p class="comment-text">{{ comment.textDisplay }}</p>
+                        <span class="comment-meta">
+                            投稿日時: {{ comment.publishedAt }} |
+                            いいね: {{ comment.likeCount }} <span class="heart-icon">&#x2764;</span>
+                        </span>
+                        </div>
+                    {% if comment.replies %}
+                    <div class="replies-container">
+                        {% for reply in comment.replies %}
+                        <div class="comment-card reply-comment">
+                            <p class="comment-author">{{ reply.authorDisplayName }} (返信)</p>
+                            <p class="comment-text">{{ reply.textDisplay }}</p>
+                            <span class="comment-meta">
+                                投稿日時: {{ reply.publishedAt }} |
+                                いいね: {{ reply.likeCount }} <span class="heart-icon">&#x2764;</span>
+                            </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="no-comments">コメントはありません。</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 YouTube Comments Pager</p>
+    </footer>
+
+</body>
+</html>

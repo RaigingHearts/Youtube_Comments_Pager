@@ -1,0 +1,43 @@
+{
+    "kind": "youtube#channelListResponse",
+    "etag": "dummy_etag_channel_pydev",
+    "pageInfo": {
+        "totalResults": 1,
+        "resultsPerPage": 5
+    },
+    "items": [
+        {
+            "kind": "youtube#channel",
+            "etag": "dummy_channel_etag_pydev",
+            "id": "UC_PythonDevChannel",
+            "snippet": {
+                "title": "Python開発日記",
+                "description": "🚚チャンネル紹介\nPython開発歴2年未満のプログラマーが、日々のプログラミング学習やアプリケーション開発の奮闘記をVLOG形式で綴っています。\n拙作のPythonアプリケーションはチャンネル内の動画投稿で公開しており、その開発過程や技術的な挑戦を共有しています。\n初心者の方にも分かりやすく、実践的な内容を目指しています。一緒にPythonを学び、成長していきましょう！\n\nチャンネル登録、高評価、コメントをお待ちしております！\n\n#Python #プログラミング #開発日記 #VLOG #初心者プログラマー #Pythonアプリ開発",
+                "customUrl": "@PythonDevDiary",
+                "publishedAt": "2023-01-15T09:00:00Z",
+                "thumbnails": {
+                    "default": {
+                        "url": "default/channel_icon_88x88.png",
+                        "width": 88,
+                        "height": 88
+                    },
+                    "medium": {
+                        "url": "default/channel_icon_240x240.png",
+                        "width": 240,
+                        "height": 240
+                    },
+                    "high": {
+                        "url": "default/channel_icon_800x800.png",
+                        "width": 800,
+                        "height": 800
+                    }
+                },
+                "localized": {
+                    "title": "Python開発日記",
+                    "description": "🚚チャンネル紹介\nPython開発歴2年未満のプログラマーが、日々のプログラミング学習やアプリケーション開発の奮闘記をVLOG形式で綴っています。\n拙作のPythonアプリケーションはチャンネル内の動画投稿で公開しており、その開発過程や技術的な挑戦を共有しています。\n初心者の方にも分かりやすく、実践的な内容を目指しています。一緒にPythonを学び、成長していきましょう！\n\nチャンネル登録、高評価、コメントをお待ちしております！\n\n#Python #プログラミング #開発日記 #VLOG #初心者プログラマー #Pythonアプリ開発"
+                },
+                "country": "JP"
+            }
+        }
+    ]
+}

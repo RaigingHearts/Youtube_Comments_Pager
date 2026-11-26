@@ -1,0 +1,68 @@
+{
+    "kind": "youtube#videoListResponse",
+    "etag": "dummy_etag_video_pydev",
+    "items": [
+        {
+            "kind": "youtube#video",
+            "etag": "dummy_video_etag_pydev",
+            "id": "PYTHON_DEV_VLOG_ID_001",
+            "snippet": {
+                "publishedAt": "2025-05-20T10:00:00Z",
+                "channelId": "UC_PythonDevChannel",
+                "title": "【Python開発日記】PyQtでGUIアプリ作成！初挑戦の奮闘記",
+                "description": "皆さん、こんにちは！PythonプログラマーのPython開発日記です。\n今回は、PyQtを使ってGUIアプリケーションを開発する様子をVLOGにしました。\n開発歴2年未満の私が、初めてのGUI開発で戸惑うことも多かったですが、なんとか形になりました！\n\n拙作のPythonアプリケーションはチャンネル内の動画投稿で公開しています。この動画では、その一部をデモしています。\n\nタイムスタンプ:\n0:00 オープニング\n1:30 PyQtの基本\n5:00 レイアウトの挑戦\n10:00 データ連携の苦労\n15:00 完成デモ\n\nチャンネル登録、高評価、コメントお待ちしております！\n\n#Python #PyQt #GUI開発 #プログラミング #VLOG #Python開発日記",
+                "thumbnails": {
+                    "default": {
+                        "url": "default/video_thumbnail_120x90.png",
+                        "width": 120,
+                        "height": 90
+                    },
+                    "medium": {
+                        "url": "default/video_thumbnail_320x180.png",
+                        "width": 320,
+                        "height": 180
+                    },
+                    "high": {
+                        "url": "default/video_thumbnail_480x360.png",
+                        "width": 480,
+                        "height": 360
+                    },
+                    "standard": {
+                        "url": "default/video_thumbnail_640x480.png",
+                        "width": 640,
+                        "height": 480
+                    },
+                    "maxres": {
+                        "url": "default/video_thumbnail_1280x720.png",
+                        "width": 1280,
+                        "height": 720
+                    }
+                },
+                "channelTitle": "Python開発日記",
+                "channelThumbnailUrl": "default/channel_icon.png",
+                "tags": [
+                    "Python",
+                    "プログラミング",
+                    "GUI",
+                    "PyQt",
+                    "開発",
+                    "VLOG",
+                    "初心者",
+                    "コーディング",
+                    "アプリケーション開発"
+                ],
+                "categoryId": "28",
+                "liveBroadcastContent": "none",
+                "defaultLanguage": "ja",
+                "localized": {
+                    "title": "【Python開発日記】PyQtでGUIアプリ作成！初挑戦の奮闘記",
+                    "description": "皆さん、こんにちは！PythonプログラマーのPython開発日記です。\n今回は、PyQtを使ってGUIアプリケーションを開発する様子をVLOGにしました。\n開発歴2年未満の私が、初めてのGUI開発で戸惑うことも多かったですが、なんとか形になりました！\n\n拙作のPythonアプリケーションはチャンネル内の動画投稿で公開しています。この動画では、その一部をデモしています。\n\nタイムスタンプ:\n0:00 オープニング\n1:30 PyQtの基本\n5:00 レイアウトの挑戦\n10:00 データ連携の苦労\n15:00 完成デモ\n\nチャンネル登録、高評価、コメントお待ちしております！\n\n#Python #PyQt #GUI開発 #プログラミング #VLOG #Python開発日記"
+                }
+            }
+        }
+    ],
+    "pageInfo": {
+        "totalResults": 1,
+        "resultsPerPage": 1
+    }
+}

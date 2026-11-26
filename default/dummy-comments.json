@@ -1,0 +1,120 @@
+[
+    {
+        "kind": "youtube#commentThreadListResponse",
+        "etag": "dummy_etag",
+        "pageInfo": {
+            "totalResults": 2,
+            "resultsPerPage": 100
+        },
+        "items": [
+            {
+                "kind": "youtube#commentThread",
+                "etag": "dummy_etag_comment1",
+                "snippet": {
+                    "channelId": "UCnvljokhYpyxUZc6l12pJog",
+                    "videoId": "9SAhwYXG4Uc",
+                    "topLevelComment": {
+                        "kind": "youtube#comment",
+                        "etag": "dummy_etag_top1",
+                        "id": "dummy_comment_1",
+                        "snippet": {
+                            "channelId": "UCnvljokhYpyxUZc6l12pJog",
+                            "videoId": "9SAhwYXG4Uc",
+                            "textDisplay": "これはダミーのトップレベルコメントです。<br>改行もテストします。",
+                            "textOriginal": "これはダミーのトップレベルコメントです。\n改行もテストします。",
+                            "authorDisplayName": "@DummyUser1",
+                            "authorProfileImageUrl": "https://placehold.co/40x40/cccccc/ffffff?text=DU1",
+                            "authorChannelUrl": "http://example.com/dummyuser1",
+                            "authorChannelId": { "value": "dummy_channel_id_1" },
+                            "canRate": true,
+                            "viewerRating": "none",
+                            "likeCount": 5,
+                            "publishedAt": "2025-05-20T10:00:00Z",
+                            "updatedAt": "2025-05-20T10:00:00Z"
+                        }
+                    },
+                    "canReply": true,
+                    "totalReplyCount": 0,
+                    "isPublic": true
+                }
+            },
+            {
+                "kind": "youtube#commentThread",
+                "etag": "dummy_etag_comment2",
+                "snippet": {
+                    "channelId": "UCnvljokhYpyxUZc6l12pJog",
+                    "videoId": "9SAhwYXG4Uc",
+                    "topLevelComment": {
+                        "kind": "youtube#comment",
+                        "etag": "dummy_etag_top2",
+                        "id": "dummy_comment_2",
+                        "snippet": {
+                            "channelId": "UCnvljokhYpyxUZc6l12pJog",
+                            "videoId": "9SAhwYXG4Uc",
+                            "textDisplay": "別のダミーコメントです。",
+                            "textOriginal": "別のダミーコメントです。",
+                            "authorDisplayName": "@DummyUser2",
+                            "authorProfileImageUrl": "https://placehold.co/40x40/cccccc/ffffff?text=DU2",
+                            "authorChannelUrl": "http://example.com/dummyuser2",
+                            "authorChannelId": { "value": "dummy_channel_id_2" },
+                            "canRate": true,
+                            "viewerRating": "none",
+                            "likeCount": 10,
+                            "publishedAt": "2025-05-20T11:00:00Z",
+                            "updatedAt": "2025-05-20T11:00:00Z"
+                        }
+                    },
+                    "canReply": true,
+                    "totalReplyCount": 2,
+                    "isPublic": true
+                },
+                "replies": {
+                    "comments": [
+                        {
+                            "kind": "youtube#comment",
+                            "etag": "dummy_etag_reply1",
+                            "id": "dummy_reply_1",
+                            "snippet": {
+                                "channelId": "UCnvljokhYpyxUZc6l12pJog",
+                                "videoId": "9SAhwYXG4Uc",
+                                "textDisplay": "ダミー返信1です。",
+                                "textOriginal": "ダミー返信1です。",
+                                "parentId": "dummy_comment_2",
+                                "authorDisplayName": "@ReplyUserA",
+                                "authorProfileImageUrl": "https://placehold.co/40x40/cccccc/ffffff?text=RA",
+                                "authorChannelUrl": "http://example.com/replyusera",
+                                "authorChannelId": { "value": "dummy_channel_id_A" },
+                                "canRate": true,
+                                "viewerRating": "none",
+                                "likeCount": 2,
+                                "publishedAt": "2025-05-20T11:05:00Z",
+                                "updatedAt": "2025-05-20T11:05:00Z"
+                            }
+                        },
+                        {
+                            "kind": "youtube#comment",
+                            "etag": "dummy_etag_reply2",
+                            "id": "dummy_reply_2",
+                            "snippet": {
+                                "channelId": "UCnvljokhYpyxUZc6l12pJog",
+                                "videoId": "9SAhwYXG4Uc",
+                                "textDisplay": "ダミー返信2です。<br>複数行の返信。",
+                                "textOriginal": "ダミー返信2です。\n複数行の返信。",
+                                "parentId": "dummy_comment_2",
+                                "authorDisplayName": "@ReplyUserB",
+                                "authorProfileImageUrl": "https://placehold.co/40x40/cccccc/ffffff?text=RB",
+                                "authorChannelUrl": "http://example.com/replyuserb",
+                                "authorChannelId": { "value": "dummy_channel_id_B" },
+                                "canRate": true,
+                                "viewerRating": "none",
+                                "likeCount": 1,
+                                "publishedAt": "2025-05-20T11:10:00Z",
+                                "updatedAt": "2025-05-20T11:10:00Z"
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+]

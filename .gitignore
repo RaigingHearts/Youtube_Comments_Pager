@@ -1,0 +1,48 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.dll
+
+# Git
+.git/
+
+# Virtual environment
+venv/
+env/
+.env/
+
+# tox testvenv
+.tox/
+
+# Editor files
+# VS Codeのワークスペース設定
+.vscode/
+
+# PyCharmなど他のIDEの設定
+.idea/
+
+# Build artifacts
+build/
+# PyInstallerの出力ディレクトリなど
+dist/
+# PyInstallerのSPECファイル
+# *.spec
+
+# Pytest
+.pytest_cache/
+
+# application template
+# 暗号化ライブラリが生成する暗号化キー
+*.key
+# アプリケーションの設定用ファイル
+*settings.json
+# アプリケーションのログ出力ファイル
+*.log
+# アプリケーションが取得したデータ群など
+rawdata/
+
+# documents
+# テキストエディタの自動バックアップ
+*.BAK*
