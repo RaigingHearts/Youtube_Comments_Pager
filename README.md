@@ -117,7 +117,7 @@ pyinstaller \--onefile \--windowed main.py
 プロジェクトのルートディレクトリから、コメントRawデータのページ処理と親子紐付けを確認できます。
 
 ```bash
-python -m unittest discover -s tests -v
+python -m unittest discover -s tests -t . -v
 ```
 
 テストでは、コメントスレッドの複数ページ、返信Rawの複数ページ、親コメントIDによる紐付け、返信Raw欠落時の親スレッド内返信へのフォールバック、RAW構造不正の検出を確認します。
