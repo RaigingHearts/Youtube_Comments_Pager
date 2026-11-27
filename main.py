@@ -39,13 +39,13 @@ def load_json_data(filepath: str) -> Any:
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        logger.debug(f"エラー: ファイルが見つかりません - {filepath}")
+        logger.debug(f"ファイルが見つかりません - {filepath}")
         return None
     except (json.JSONDecodeError, UnicodeDecodeError):
-        logger.debug(f"エラー: JSON形式または文字コードが不正です - {filepath}")
+        logger.debug(f"JSON形式または文字コードが不正です - {filepath}")
         return None
     except OSError as e:
-        logger.debug(f"エラー: ファイルを読み込めません - {filepath}: {e}")
+        logger.debug(f"ファイルを読み込めません - {filepath}: {e}")
         return None
 
 def get_video_id_from_data_folder(folder_name: str) -> Optional[str]:
@@ -133,7 +133,7 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
                 if any(first_parent.get(key) != comment_info.get(key)
                        for key in ("authorDisplayName", "textDisplay", "publishedAt")):
                     logger.warning(
-                        "警告: 親コメントID '{}' の重複レコードで内容が一致しません。"
+                        "親コメントID '{}' の重複レコードで内容が一致しません。"
                         "先に出現したレコードを採用します。".format(parent_id)
                     )
             else:
@@ -161,7 +161,7 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
 
     if duplicate_parent_count:
         logger.warning(
-            "警告: 親コメントRawに重複IDが{}件あります。"
+            "親コメントRawに重複IDが{}件あります。"
             "重複表示を避け、先に出現した親コメントを採用しました。".format(duplicate_parent_count)
         )
 
@@ -169,7 +169,7 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
     # そのRaw配列の後ろに未保存ページが存在する可能性がある。
     if comments_data and isinstance(comments_data[-1], dict) and comments_data[-1].get("nextPageToken"):
         logger.warning(
-            "警告: 最後の親コメントRawページにnextPageTokenがあります。"
+            "最後の親コメントRawページにnextPageTokenがあります。"
             "後続ページが保存されていない可能性があります（取得状態の判定ではありません）。"
         )
 
@@ -205,7 +205,7 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
                             duplicate_external_reply_count += 1
                             continue
                         logger.warning(
-                            "警告: 返信ID '{}' が複数の親コメントに紐付いています。"
+                            "返信ID '{}' が複数の親コメントに紐付いています。"
                             "先に出現した親 '{}' のレコードを採用し、親 '{}' の重複を除外します。".format(
                                 reply_id, previous_parent_id, parent_id
                             )
@@ -218,18 +218,18 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
             # 最後の返信Rawページにtokenが残る場合、後続ページが保存されていない可能性がある。
             if raw_responses and isinstance(raw_responses[-1], dict) and raw_responses[-1].get("nextPageToken"):
                 logger.warning(
-                    "警告: 親コメント '{}' の最後の返信RawページにnextPageTokenがあります。"
+                    "親コメント '{}' の最後の返信RawページにnextPageTokenがあります。"
                     "後続ページが保存されていない可能性があります（取得状態の判定ではありません）。".format(parent_id)
                 )
 
     if duplicate_external_reply_count:
         logger.warning(
-            "警告: 返信Rawに重複IDまたは複数親への重複紐付けが{}件あります。"
+            "返信Rawに重複IDまたは複数親への重複紐付けが{}件あります。"
             "重複表示を避け、先に出現したレコードを採用しました。".format(duplicate_external_reply_count)
         )
     if duplicate_inline_reply_count:
         logger.info(
-            "情報: 親スレッドRaw内の返信プレビュー重複を{}件除外しました。".format(
+            "親スレッドRaw内の返信プレビュー重複を{}件除外しました。".format(
                 duplicate_inline_reply_count
             )
         )
@@ -237,7 +237,7 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
     # 親コメントが欠落している返信RawはHTMLに紐付けられないため、警告して区別する。
     for parent_id in external_replies_by_parent_id:
         if parent_id not in comments_by_parent_id:
-            logger.warning("警告: 返信Rawの親コメント '{}' がコメントスレッドRawにありません。返信を表示できません。".format(parent_id))
+            logger.warning("返信Rawの親コメント '{}' がコメントスレッドRawにありません。返信を表示できません。".format(parent_id))
 
     # 外部返信Rawと親スレッド内の返信プレビューをIDで統合する。
     # 外部Rawが部分保存でも、プレビューにしかない返信を失わない。
@@ -254,7 +254,7 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
         expected_reply_count = expected_reply_counts_by_parent_id.get(parent_id, 0)
         if expected_reply_count > len(selected_replies):
             logger.warning(
-                "警告: 親コメント '{}' の返信はAPI記録上{}件ですが、RAWデータから表示できる返信は{}件です。".format(
+                "親コメント '{}' の返信はAPI記録上{}件ですが、RAWデータから表示できる返信は{}件です。".format(
                     parent_id, expected_reply_count, len(selected_replies)
                 )
             )
@@ -312,7 +312,7 @@ def generate_html_page(video_data: Dict, comments_data: List[Dict], channel_data
         logger.info(f"HTMLページを生成しました: {output_filepath}")
         return output_filepath
     except Exception as e:
-        logger.error(f"エラー: HTMLページの生成中に問題が発生しました: {e}")
+        logger.error(f"HTMLページの生成中に問題が発生しました: {e}")
         return None # エラー発生時はNoneを返す
 
 def main():
@@ -340,7 +340,7 @@ def main():
     selected_folder_name = os.path.basename(selected_folder_path)
     folder_video_id = get_video_id_from_data_folder(selected_folder_name)
     if not folder_video_id:
-        logger.error("エラー: 選択されたフォルダ名 '{}' は無効な形式です。".format(selected_folder_name))
+        logger.error("選択されたフォルダ名 '{}' は無効な形式です。".format(selected_folder_name))
         logger.error("形式: youtube_data_<動画ID>_<YYYY-MM-DD_HH_MM_SS>（旧形式のYYYY-MM-DDも可）")
         sys.exit(1) # 無効なフォルダ名の場合、エラー終了
 
@@ -362,7 +362,7 @@ def main():
 
     # video_infoが欠落した部分データでも、フォルダ名から動画IDを特定できる。
     if actual_video_id and actual_video_id != folder_video_id:
-        logger.error("エラー: フォルダ名の動画IDとvideo_infoファイル名の動画IDが一致しません。")
+        logger.error("フォルダ名の動画IDとvideo_infoファイル名の動画IDが一致しません。")
         sys.exit(1)
     video_id_to_use = actual_video_id or folder_video_id
 
@@ -377,7 +377,7 @@ def main():
     # コメントRawは必須。欠落・JSON不正をダミーコメントや正常な空データに置き換えない。
     comments_data = load_json_data(comments_json_path)
     if comments_data is None:
-        logger.error("エラー: コメントスレッドRawデータを読み込めません。ファイルの欠落またはJSON不正を確認してください。")
+        logger.error("コメントスレッドRawデータを読み込めません。ファイルの欠落またはJSON不正を確認してください。")
         sys.exit(1)
 
     # 返信Rawファイルは取得データがある場合に保存されるため、存在しない場合は親スレッド内の返信だけを使用する。
@@ -385,26 +385,26 @@ def main():
     if os.path.exists(replies_json_path):
         replies_data = load_json_data(replies_json_path)
         if replies_data is None:
-            logger.error("エラー: 返信RawデータのJSON形式が不正です。")
+            logger.error("返信RawデータのJSON形式が不正です。")
             sys.exit(1)
     else:
-        logger.warning("警告: 返信Rawファイルがありません。親スレッドRaw内に含まれる返信のみ表示します。")
+        logger.warning("返信Rawファイルがありません。親スレッドRaw内に含まれる返信のみ表示します。")
 
     # 動画・チャンネル情報は任意。欠落時は空の情報として扱い、コメント処理は継続する。
     videos_data = load_json_data(videos_json_path) if os.path.exists(videos_json_path) else None
     if videos_data is None:
-        logger.warning("警告: 動画情報Rawデータがありません、または読み込めません。動画情報なしで続行します。")
+        logger.warning("動画情報Rawデータがありません、または読み込めません。動画情報なしで続行します。")
         videos_data = {"items": []}
 
     channel_data = load_json_data(channel_json_path) if channel_json_path and os.path.exists(channel_json_path) else None
     if channel_data is None:
-        logger.warning("警告: チャンネル情報Rawデータがありません、または読み込めません。チャンネル情報なしで続行します。")
+        logger.warning("チャンネル情報Rawデータがありません、または読み込めません。チャンネル情報なしで続行します。")
         channel_data = {"items": []}
 
     try:
         processed_comments = process_youtube_comments(comments_data, replies_data)
     except ValueError as e:
-        logger.error("エラー: コメントRawデータの構造が不正です: {}".format(e))
+        logger.error("コメントRawデータの構造が不正です: {}".format(e))
         sys.exit(1)
 
 
@@ -418,9 +418,9 @@ def main():
     example_template_path = os.path.join(TEMPLATES_DIR, 'example.html')
     if os.path.exists(example_template_path):
         template_to_use = 'example.html'
-        logger.info(f"情報: '{example_template_path}' が見つかったため、このテンプレートを使用します。")
+        logger.info(f"'{example_template_path}' が見つかったため、このテンプレートを使用します。")
     else:
-        logger.info(f"情報: '{example_template_path}' が見つかりません。デフォルトの '{template_to_use}' を使用します。")
+        logger.info(f"'{example_template_path}' が見つかりません。デフォルトの '{template_to_use}' を使用します。")
 
     # generate_html_page に選択されたフォルダパスを output_dir として渡す
     generated_filepath = generate_html_page(videos_data, processed_comments, channel_data, template_to_use, output_html_filename, output_dir=selected_folder_path)
@@ -432,22 +432,22 @@ def main():
         target_static_dir = os.path.join(selected_folder_path, 'static')
         
         if os.path.exists(target_static_dir):
-            logger.info(f"情報: 既存の '{target_static_dir}' フォルダを削除しています...")
+            logger.info(f"既存の '{target_static_dir}' フォルダを削除しています...")
             try:
                 shutil.rmtree(target_static_dir)
                 logger.info("既存フォルダの削除が完了しました。")
             except OSError as e:
-                logger.error(f"エラー: 既存のstaticフォルダを削除できませんでした: {e}")
+                logger.error(f"既存のstaticフォルダを削除できませんでした: {e}")
                 logger.warning("HTMLページの生成は成功しましたが、staticファイルのコピーに問題が発生しました。手動でコピーしてください。")
                 return # 処理を中断するか、エラーを報告して続行しない
 
         try:
-            logger.info(f"情報: '{STATIC_DIR}' から '{target_static_dir}' へ静的ファイルをコピーしています...")
+            logger.info(f"'{STATIC_DIR}' から '{target_static_dir}' へ静的ファイルをコピーしています...")
             shutil.copytree(STATIC_DIR, target_static_dir)
             logger.info("静的ファイルのコピーが完了しました。")
         except Exception as e:
-            logger.error(f"エラー: 静的ファイルのコピー中に問題が発生しました: {e}")
-            print("HTMLページの生成は成功しましたが、staticファイルのコピーに問題が発生しました。手動でコピーしてください。")
+            logger.error(f"静的ファイルのコピー中に問題が発生しました: {e}")
+            logger.warning("HTMLページの生成は成功しましたが、staticファイルのコピーに問題が発生しました。手動でコピーしてください。")
     else:
         logger.error("HTMLページの生成に失敗しました。")
 
