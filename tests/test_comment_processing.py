@@ -1,6 +1,6 @@
 import unittest
 
-from main import process_youtube_comments
+from main import get_video_id_from_data_folder, process_youtube_comments
 
 
 def make_comment(comment_id, text, author="TestUser"):
@@ -34,6 +34,23 @@ def make_thread_page(*items):
 
 def make_reply_page(*items):
     return {"items": list(items)}
+
+
+class DataFolderNameTests(unittest.TestCase):
+    def test_extracts_video_id_from_current_timestamp_folder(self):
+        self.assertEqual(
+            get_video_id_from_data_folder("youtube_data_9SAhwYXG4Uc_2026-11-27_01_46_19"),
+            "9SAhwYXG4Uc",
+        )
+
+    def test_accepts_legacy_date_only_folder(self):
+        self.assertEqual(
+            get_video_id_from_data_folder("youtube_data_9SAhwYXG4Uc_2026-11-27"),
+            "9SAhwYXG4Uc",
+        )
+
+    def test_rejects_invalid_folder_name(self):
+        self.assertIsNone(get_video_id_from_data_folder("youtube_data_invalid_2026-11-27"))
 
 
 class ProcessYoutubeCommentsTests(unittest.TestCase):
