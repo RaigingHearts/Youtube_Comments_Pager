@@ -73,6 +73,11 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
     if not isinstance(comments_data, list):
         raise ValueError("コメントスレッドRawデータは、APIレスポンスページのリストである必要があります。")
 
+    def same_reply_content(first: Dict, second: Dict) -> bool:
+        """同一返信IDの内容差を検出するための比較。"""
+        fields = ("authorDisplayName", "textDisplay", "publishedAt", "likeCount")
+        return all(first.get(field) == second.get(field) for field in fields)
+
     def normalize_comment(comment: Any, kind: str) -> Dict:
         if not isinstance(comment, dict):
             raise ValueError("{}コメントのデータが辞書ではありません。".format(kind))
@@ -94,7 +99,6 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
     processed_comments = []
     comments_by_parent_id = {}
     inline_replies_by_parent_id = {}
-    inline_reply_ids_by_parent_id = {}
     expected_reply_counts_by_parent_id = {}
     duplicate_parent_count = 0
     duplicate_inline_reply_count = 0
@@ -150,14 +154,9 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
                 if not isinstance(reply_items, list):
                     raise ValueError("親コメント '{}' のreplies.commentsがリストではありません。".format(parent_id))
                 inline_replies = inline_replies_by_parent_id.setdefault(parent_id, [])
-                inline_seen = inline_reply_ids_by_parent_id.setdefault(parent_id, set())
                 for reply in reply_items:
-                    normalized_reply = normalize_comment(reply, "返信")
-                    if normalized_reply["id"] in inline_seen:
-                        duplicate_inline_reply_count += 1
-                        continue
-                    inline_seen.add(normalized_reply["id"])
-                    inline_replies.append(normalized_reply)
+                    # 重複判定は外部返信Rawの優先確定後、全親横断で行う。
+                    inline_replies.append(normalize_comment(reply, "返信"))
 
     if duplicate_parent_count:
         logger.warning(
@@ -201,11 +200,17 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
                     reply_id = normalized_reply["id"]
                     previous_parent_id = reply_id_owner.get(reply_id)
                     if previous_parent_id is not None:
-                        if previous_parent_id == parent_id:
-                            duplicate_external_reply_count += 1
-                            continue
+                        previous_reply = next(
+                            reply for reply in external_replies_by_parent_id.get(previous_parent_id, [])
+                            if reply["id"] == reply_id
+                        )
+                        if not same_reply_content(previous_reply, normalized_reply):
+                            logger.warning(
+                                "返信ID '{}' の重複Rawで内容が一致しません。"
+                                "先に出現した外部Rawを採用します。".format(reply_id)
+                            )
                         logger.warning(
-                            "返信ID '{}' が複数の親コメントに紐付いています。"
+                            "返信ID '{}' が外部返信Raw内で重複しています。"
                             "先に出現した親 '{}' のレコードを採用し、親 '{}' の重複を除外します。".format(
                                 reply_id, previous_parent_id, parent_id
                             )
@@ -227,9 +232,39 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
             "返信Rawに重複IDまたは複数親への重複紐付けが{}件あります。"
             "重複表示を避け、先に出現したレコードを採用しました。".format(duplicate_external_reply_count)
         )
+    # 外部返信RawのID所有権を先に確定し、その後インライン返信を全親横断で照合する。
+    accepted_inline_replies_by_parent_id = {}
+    for parent_id, inline_replies in inline_replies_by_parent_id.items():
+        accepted_inline_replies = accepted_inline_replies_by_parent_id.setdefault(parent_id, [])
+        for inline_reply in inline_replies:
+            reply_id = inline_reply["id"]
+            owner_parent_id = reply_id_owner.get(reply_id)
+            if owner_parent_id is not None:
+                owner_reply = next(
+                    reply for reply in external_replies_by_parent_id.get(owner_parent_id, [])
+                    if reply["id"] == reply_id
+                )
+                if not same_reply_content(owner_reply, inline_reply):
+                    logger.warning(
+                        "返信ID '{}' の外部Rawとインライン返信で内容が一致しません。"
+                        "外部Rawを優先します。".format(reply_id)
+                    )
+                logger.warning(
+                    "返信ID '{}' は外部返信Rawですでに採用済みです。"
+                    "外部Rawの親 '{}' を優先し、親 '{}' のインライン返信を除外します。".format(
+                        reply_id, owner_parent_id, parent_id
+                    )
+                )
+                duplicate_inline_reply_count += 1
+                continue
+
+            # 外部Rawにない返信は、最初に出現した親のインライン返信を採用する。
+            reply_id_owner[reply_id] = parent_id
+            accepted_inline_replies.append(inline_reply)
+
     if duplicate_inline_reply_count:
-        logger.info(
-            "親スレッドRaw内の返信プレビュー重複を{}件除外しました。".format(
+        logger.warning(
+            "親スレッドRaw内の返信プレビュー重複または外部Rawとの重複を{}件除外しました。".format(
                 duplicate_inline_reply_count
             )
         )
@@ -243,14 +278,8 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
     # 外部Rawが部分保存でも、プレビューにしかない返信を失わない。
     for parent_id, parent_comments in comments_by_parent_id.items():
         external_replies = external_replies_by_parent_id.get(parent_id, [])
-        inline_replies = inline_replies_by_parent_id.get(parent_id, [])
-        selected_replies = []
-        selected_reply_ids = set()
-        for reply in external_replies + inline_replies:
-            if reply["id"] in selected_reply_ids:
-                continue
-            selected_reply_ids.add(reply["id"])
-            selected_replies.append(reply)
+        inline_replies = accepted_inline_replies_by_parent_id.get(parent_id, [])
+        selected_replies = list(external_replies) + list(inline_replies)
         expected_reply_count = expected_reply_counts_by_parent_id.get(parent_id, 0)
         if expected_reply_count > len(selected_replies):
             logger.warning(
