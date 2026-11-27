@@ -233,18 +233,20 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
             "重複表示を避け、先に出現したレコードを採用しました。".format(duplicate_external_reply_count)
         )
     # 外部返信RawのID所有権を先に確定し、その後インライン返信を全親横断で照合する。
+    external_reply_id_owner = dict(reply_id_owner)
     accepted_inline_replies_by_parent_id = {}
+    accepted_inline_reply_by_id = {}
     for parent_id, inline_replies in inline_replies_by_parent_id.items():
         accepted_inline_replies = accepted_inline_replies_by_parent_id.setdefault(parent_id, [])
         for inline_reply in inline_replies:
             reply_id = inline_reply["id"]
-            owner_parent_id = reply_id_owner.get(reply_id)
-            if owner_parent_id is not None:
-                owner_reply = next(
-                    reply for reply in external_replies_by_parent_id.get(owner_parent_id, [])
+            external_owner_parent_id = external_reply_id_owner.get(reply_id)
+            if external_owner_parent_id is not None:
+                external_reply = next(
+                    reply for reply in external_replies_by_parent_id.get(external_owner_parent_id, [])
                     if reply["id"] == reply_id
                 )
-                if not same_reply_content(owner_reply, inline_reply):
+                if not same_reply_content(external_reply, inline_reply):
                     logger.warning(
                         "返信ID '{}' の外部Rawとインライン返信で内容が一致しません。"
                         "外部Rawを優先します。".format(reply_id)
@@ -252,7 +254,24 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
                 logger.warning(
                     "返信ID '{}' は外部返信Rawですでに採用済みです。"
                     "外部Rawの親 '{}' を優先し、親 '{}' のインライン返信を除外します。".format(
-                        reply_id, owner_parent_id, parent_id
+                        reply_id, external_owner_parent_id, parent_id
+                    )
+                )
+                duplicate_inline_reply_count += 1
+                continue
+
+            previous_inline = accepted_inline_reply_by_id.get(reply_id)
+            if previous_inline is not None:
+                previous_parent_id, previous_reply = previous_inline
+                if not same_reply_content(previous_reply, inline_reply):
+                    logger.warning(
+                        "返信ID '{}' のインライン返信重複で内容が一致しません。"
+                        "先に出現したレコードを採用します。".format(reply_id)
+                    )
+                logger.warning(
+                    "返信ID '{}' が複数の親コメントまたは同一親内で重複しています。"
+                    "先に出現した親 '{}' のインライン返信を採用し、親 '{}' の重複を除外します。".format(
+                        reply_id, previous_parent_id, parent_id
                     )
                 )
                 duplicate_inline_reply_count += 1
@@ -260,6 +279,7 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
 
             # 外部Rawにない返信は、最初に出現した親のインライン返信を採用する。
             reply_id_owner[reply_id] = parent_id
+            accepted_inline_reply_by_id[reply_id] = (parent_id, inline_reply)
             accepted_inline_replies.append(inline_reply)
 
     if duplicate_inline_reply_count:
