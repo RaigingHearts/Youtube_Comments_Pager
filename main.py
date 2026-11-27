@@ -76,6 +76,7 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
     processed_comments = []
     comments_by_parent_id = {}
     inline_replies_by_parent_id = {}
+    expected_reply_counts_by_parent_id = {}
 
     # 親コメントRawレスポンスはページをまたいですべて処理する。
     for page_index, page in enumerate(comments_data, start=1):
@@ -94,6 +95,12 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
             top_level = thread_snippet.get("topLevelComment")
             top_level_info = normalize_comment(top_level, "トップレベル")
             parent_id = top_level_info["id"]
+            expected_reply_count = thread_snippet.get("totalReplyCount", 0)
+            if isinstance(expected_reply_count, int) and expected_reply_count > 0:
+                expected_reply_counts_by_parent_id[parent_id] = max(
+                    expected_reply_counts_by_parent_id.get(parent_id, 0),
+                    expected_reply_count
+                )
 
             comment_info = dict(top_level_info)
             comment_info["replies"] = []
@@ -140,10 +147,22 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
                     normalized_reply = normalize_comment(reply, "返信")
                     external_replies_by_parent_id.setdefault(parent_id, []).append(normalized_reply)
 
+    # 親コメントが欠落している返信RawはHTMLに紐付けられないため、警告して区別する。
+    for parent_id in external_replies_by_parent_id:
+        if parent_id not in comments_by_parent_id:
+            print("警告: 返信Rawの親コメント '{}' がコメントスレッドRawにありません。返信を表示できません。".format(parent_id))
+
     # 返信Rawの実データがあればそちらを優先し、なければ親スレッド内の返信を表示する。
     for parent_id, parent_comments in comments_by_parent_id.items():
         external_replies = external_replies_by_parent_id.get(parent_id, [])
         selected_replies = external_replies or inline_replies_by_parent_id.get(parent_id, [])
+        expected_reply_count = expected_reply_counts_by_parent_id.get(parent_id, 0)
+        if expected_reply_count > len(selected_replies):
+            print(
+                "警告: 親コメント '{}' の返信はAPI記録上{}件ですが、RAWデータから表示できる返信は{}件です。".format(
+                    parent_id, expected_reply_count, len(selected_replies)
+                )
+            )
         for parent_comment in parent_comments:
             parent_comment["replies"] = list(selected_replies)
 
