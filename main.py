@@ -42,6 +42,18 @@ def load_json_data(filepath: str) -> Any:
         print(f"エラー: JSON形式が不正です - {filepath}")
         return None
 
+def get_video_id_from_data_folder(folder_name: str) -> Optional[str]:
+    """
+    データフォルダ名から動画IDを取得します。
+    現行scraperの日時付き形式と、旧日付のみの形式を受け付けます。
+    """
+    match = re.match(
+        r"^youtube_data_([a-zA-Z0-9_-]{11})_(\d{4}-\d{2}-\d{2})(?:_(\d{2})_(\d{2})_(\d{2}))?$",
+        folder_name
+    )
+    return match.group(1) if match else None
+
+
 def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> List[Dict]:
     """
     保存済みのコメントスレッドRawページと返信Rawページを、表示用の親子構造へ整理します。
@@ -241,15 +253,11 @@ def main():
 
     # 現行scraperのフォルダ名（日時まで）と、旧形式（日付のみ）の両方を検証
     selected_folder_name = os.path.basename(selected_folder_path)
-    folder_match = re.match(
-        r"^youtube_data_([a-zA-Z0-9_-]{11})_(\d{4}-\d{2}-\d{2})(?:_(\d{2})_(\d{2})_(\d{2}))?$",
-        selected_folder_name
-    )
-    if not folder_match:
+    folder_video_id = get_video_id_from_data_folder(selected_folder_name)
+    if not folder_video_id:
         print("エラー: 選択されたフォルダ名 '{}' は無効な形式です。".format(selected_folder_name))
         print("形式: youtube_data_<動画ID>_<YYYY-MM-DD_HH_MM_SS>（旧形式のYYYY-MM-DDも可）")
         sys.exit(1) # 無効なフォルダ名の場合、エラー終了
-    folder_video_id = folder_match.group(1)
 
     print(f"選択されたフォルダ: {selected_folder_path}")
 
