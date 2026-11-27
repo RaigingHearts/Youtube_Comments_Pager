@@ -144,6 +144,8 @@ python -m unittest discover -s tests -t . -v
 
 **テスト実行状況（2026-11-27）**: ユーザーのWindows環境で上記コマンドを実行し、**13件すべて成功（Ran 13 tests / OK）**を確認しました。
 
+**追加テスト確認（2026-11-28）**: 第三者レビューのLow指摘に対応する動画ID不一致テストを追加し、Python 3.8のユーザー環境で同じコマンドを実行しました。**16件すべて成功（Ran 16 tests / OK）**を確認しました。テスト `test_exits_when_folder_and_video_info_filename_ids_mismatch` では、フォルダ名と `video_info_raw_*.json` の動画ID不一致時に終了コード `1` で中断し、JSON読み込みへ進まないことを検証します。
+
 ### **実データ・部分Rawの確認記録（2026-11-27）**
 
 - 既存のOSF動画ID `OSFsStp8aSI` の保存データを使い、HTML生成・表示を確認しました。
