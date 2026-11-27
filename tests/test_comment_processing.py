@@ -1,4 +1,9 @@
+import os
+import tempfile
 import unittest
+from unittest.mock import patch
+
+import main
 from main import get_video_id_from_data_folder, process_youtube_comments
 
 
@@ -230,6 +235,32 @@ class ProcessYoutubeCommentsTests(unittest.TestCase):
                 [{"parent_id": "parent-1", "raw_responses": [{}]}],
             )
 
+
+class MainVideoIdValidationTests(unittest.TestCase):
+    def test_exits_when_folder_and_video_info_filename_ids_mismatch(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            folder_path = os.path.join(
+                temp_dir,
+                "youtube_data_9SAhwYXG4Uc_2026-11-27_01_46_19",
+            )
+            os.makedirs(folder_path)
+            mismatched_video_info = os.path.join(
+                folder_path,
+                "video_info_raw_AAAAAAAAAAA.json",
+            )
+            with open(mismatched_video_info, "w", encoding="utf-8"):
+                pass
+
+            with (
+                patch("main.tk.Tk"),
+                patch("main.filedialog.askdirectory", return_value=folder_path),
+                patch("main.load_json_data") as load_json_data,
+            ):
+                with self.assertRaises(SystemExit) as raised:
+                    main.main()
+
+            self.assertEqual(raised.exception.code, 1)
+            load_json_data.assert_not_called()
 
 if __name__ == "__main__":
     unittest.main()
