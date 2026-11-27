@@ -40,6 +40,7 @@ PyInstallerでビルドされた実行ファイルを使用する場合：
   このフォルダ内に、以下のJSONファイルを配置します。  
   例: 実行ファイルのあるディレクトリ/rawdata/youtube\_data\_\<動画ID\>\_\<YYYY-MM-DD_HH_MM_SS\>/ または任意の場所  
   * comments\_raw\_\<動画ID\>.json (例: comments\_raw\_9SAhwYXG4Uc.json)  
+  * comment\_replies\_raw\_\<動画ID\>.json (返信Rawデータが保存されている場合)
   * video\_info\_raw\_\<動画ID\>.json  
   * channel\_info\_raw\_\<チャンネルID\>.json  
   * **注意**: これらのJSONファイルは、YouTube Data APIから直接取得したRAWデータ形式である必要があります。コメントスレッドデータは、commentThreads.listのRawレスポンスページを配列に格納し、各ページがitemsキーを持つ形式を想定しています。返信データは別ファイルに保存され、親コメントIDと返信Rawレスポンスページの配列で関連付けられます。  
@@ -112,7 +113,17 @@ pyinstaller \--onefile \--windowed main.py
 
 生成された実行可能ファイルは、外部の templates、static、default フォルダに依存します。また、読み込むRAWデータも youtube\_data\_\<動画ID\>\_\<YYYY-MM-DD_HH_MM_SS\> 形式のフォルダとして、実行ファイルとは別に存在する必要があります。配布する際は、上記「3.2. 必要なフォルダとファイルの配置」に従ってこれらのフォルダとファイルを配置する必要があることを明確に伝えてください。
 
-## **5\. 注意事項**
+## **5. テスト（開発時）**
+
+プロジェクトのルートディレクトリから、コメントRawデータのページ処理と親子紐付けを確認できます。
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+テストでは、コメントスレッドの複数ページ、返信Rawの複数ページ、親コメントIDによる紐付け、返信Raw欠落時の親スレッド内返信へのフォールバック、RAW構造不正の検出を確認します。
+
+## **6. 注意事項**
 
 * このツールは、YouTube Data APIから取得済みのRAWデータを使用します。APIキーは不要です。  
 * コメント投稿機能は含まれていません。表示専用です。  
