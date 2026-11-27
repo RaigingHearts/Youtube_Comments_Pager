@@ -61,7 +61,6 @@ PyInstallerでビルドされた実行ファイルを使用する場合：
 Pythonスクリプトとして直接実行する場合（開発用）：  
 youtube-comments-pager ディレクトリの直下に、上記のフォルダ構造（rawdata, templates, static, default）を作成し、それぞれのファイルを配置してください。youtube\_data\_\<動画ID\>\_\<YYYY-MM-DD_HH_MM_SS\> フォルダは rawdata フォルダ内に作成することを推奨します。
 
-#
 コメントスレッドRawファイルは複数ページを含む場合があります。ページャーは各ページのitemsを処理します。返信Rawファイルは `parent_id` と `raw_responses` を持つレコードのリストです。返信Rawファイルが存在しない場合は、親スレッドRawに含まれる返信のみ表示します。コメントスレッドRawファイルが欠落・JSON不正の場合は、ダミーコメントへ置き換えずエラーとして扱います。
 
 ## **3.3. HTMLページの生成**
