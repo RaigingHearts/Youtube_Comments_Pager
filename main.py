@@ -38,8 +38,11 @@ def load_json_data(filepath: str) -> Any:
     except FileNotFoundError:
         print(f"エラー: ファイルが見つかりません - {filepath}")
         return None
-    except json.JSONDecodeError:
-        print(f"エラー: JSON形式が不正です - {filepath}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        print(f"エラー: JSON形式または文字コードが不正です - {filepath}")
+        return None
+    except OSError as e:
+        print(f"エラー: ファイルを読み込めません - {filepath}: {e}")
         return None
 
 def get_video_id_from_data_folder(folder_name: str) -> Optional[str]:
