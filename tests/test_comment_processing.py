@@ -251,13 +251,14 @@ class MainVideoIdValidationTests(unittest.TestCase):
             with open(mismatched_video_info, "w", encoding="utf-8"):
                 pass
 
-            with (
-                patch("main.tk.Tk"),
-                patch("main.filedialog.askdirectory", return_value=folder_path),
-                patch("main.load_json_data") as load_json_data,
-            ):
-                with self.assertRaises(SystemExit) as raised:
-                    main.main()
+            with patch("main.tk.Tk"):
+                with patch(
+                    "main.filedialog.askdirectory",
+                    return_value=folder_path,
+                ):
+                    with patch("main.load_json_data") as load_json_data:
+                        with self.assertRaises(SystemExit) as raised:
+                            main.main()
 
             self.assertEqual(raised.exception.code, 1)
             load_json_data.assert_not_called()
