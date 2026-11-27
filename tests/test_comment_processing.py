@@ -128,6 +128,55 @@ class ProcessYoutubeCommentsTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in result[0]["replies"]], ["reply-1", "reply-2", "inline-1", "inline-2"])
         self.assertTrue(any("重複ID" in message for message in captured.output))
 
+    def test_deduplicates_inline_reply_id_across_different_parents(self):
+        shared_reply = make_comment("shared-inline", "first-parent-copy")
+        comments_data = [
+            make_thread_page(make_thread("parent-1", [shared_reply])),
+            make_thread_page(make_thread("parent-2", [
+                make_comment("shared-inline", "second-parent-copy")
+            ])),
+        ]
+
+        with self.assertLogs("main", level="WARNING") as captured:
+            result = process_youtube_comments(comments_data)
+
+        self.assertEqual([item["id"] for item in result[0]["replies"]], ["shared-inline"])
+        self.assertEqual(result[0]["replies"][0]["textDisplay"], "first-parent-copy")
+        self.assertEqual(result[1]["replies"], [])
+        self.assertTrue(any("複数の親コメント" in message or "重複" in message
+                            for message in captured.output))
+
+    def test_external_reply_raw_wins_over_different_inline_copy(self):
+        inline_copy = make_comment("reply-shared", "inline-different-content")
+        comments_data = [
+            make_thread_page(make_thread("parent-1")),
+            make_thread_page(make_thread("parent-2", [inline_copy])),
+        ]
+        replies_data = [
+            {
+                "parent_id": "parent-1",
+                "raw_responses": [make_reply_page(
+                    make_comment("reply-shared", "external-authoritative-content")
+                )],
+            }
+        ]
+
+        with self.assertLogs("main", level="WARNING") as captured:
+            result = process_youtube_comments(comments_data, replies_data)
+
+        self.assertEqual(
+            [item["id"] for item in result[0]["replies"]],
+            ["reply-shared"],
+        )
+        self.assertEqual(
+            result[0]["replies"][0]["textDisplay"],
+            "external-authoritative-content",
+        )
+        self.assertEqual(result[1]["replies"], [])
+        log_output = "\\n".join(captured.output)
+        self.assertIn("外部Rawとインライン返信で内容が一致しません", log_output)
+        self.assertIn("外部返信Rawですでに採用済み", log_output)
+
     def test_warns_when_last_saved_raw_page_has_next_page_token(self):
         comments_data = [{"items": [make_thread("parent-1")], "nextPageToken": "more-comments"}]
         replies_data = [{"parent_id": "parent-1", "raw_responses": [{"items": [make_comment("reply-1", "reply-1")], "nextPageToken": "more-replies"}]}]
