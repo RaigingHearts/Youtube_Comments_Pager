@@ -42,39 +42,111 @@ def load_json_data(filepath: str) -> Any:
         print(f"エラー: JSON形式が不正です - {filepath}")
         return None
 
-def process_youtube_comments(comments_data: Any) -> List[Dict]:
+def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> List[Dict]:
     """
-    YouTube APIのコメントデータをツリー構造（トップレベルと返信）に整理します。
-    comments_dataがリストの場合（APIレスポンスの形式）に対応します。
+    保存済みのコメントスレッドRawページと返信Rawページを、表示用の親子構造へ整理します。
+
+    comments_data:
+        commentThreads.list のRawレスポンスページを格納したリスト。
+    replies_data:
+        parent_id と raw_responses を持つ返信Rawレコードのリスト。
+        Noneの場合は、親スレッドRaw内に含まれる返信だけを使用します。
     """
+    if not isinstance(comments_data, list):
+        raise ValueError("コメントスレッドRawデータは、APIレスポンスページのリストである必要があります。")
+
+    def normalize_comment(comment: Any, kind: str) -> Dict:
+        if not isinstance(comment, dict):
+            raise ValueError("{}コメントのデータが辞書ではありません。".format(kind))
+        comment_id = comment.get("id")
+        snippet = comment.get("snippet")
+        if not isinstance(comment_id, str) or not comment_id:
+            raise ValueError("{}コメントに有効なidがありません。".format(kind))
+        if not isinstance(snippet, dict):
+            raise ValueError("{}コメントのsnippetがありません、または不正です。".format(kind))
+        return {
+            "id": comment_id,
+            "authorDisplayName": snippet.get("authorDisplayName", "不明な投稿者"),
+            "authorProfileImageUrl": snippet.get("authorProfileImageUrl", ""),
+            "textDisplay": snippet.get("textDisplay", snippet.get("textOriginal", "")),
+            "publishedAt": snippet.get("publishedAt", ""),
+            "likeCount": snippet.get("likeCount", 0)
+        }
+
     processed_comments = []
-    # comments_dataがリストであり、かつ最初の要素が辞書で'items'キーを持つことを確認
-    if isinstance(comments_data, list) and comments_data and 'items' in comments_data[0]:
-        for item in comments_data[0]['items']: # ここを修正: comments_data[0] から 'items' にアクセス
-            top_level_comment = item['snippet']['topLevelComment']
-            comment_info = {
-                'id': top_level_comment['id'],
-                'authorDisplayName': top_level_comment['snippet']['authorDisplayName'],
-                'authorProfileImageUrl': top_level_comment['snippet'].get('authorProfileImageUrl', ''), # チャンネルアイコンURLを追加
-                'textDisplay': top_level_comment['snippet']['textDisplay'],
-                'publishedAt': top_level_comment['snippet']['publishedAt'],
-                'likeCount': top_level_comment['snippet']['likeCount'],
-                'replies': [] # 返信コメントを格納するリスト
-            }
-            
-            # 返信コメントが存在する場合
-            if 'replies' in item:
-                for reply in item['replies']['comments']:
-                    reply_info = {
-                        'id': reply['id'],
-                        'authorDisplayName': reply['snippet']['authorDisplayName'],
-                        'authorProfileImageUrl': reply['snippet'].get('authorProfileImageUrl', ''), # チャンネルアイコンURLを追加
-                        'textDisplay': reply['snippet']['textDisplay'],
-                        'publishedAt': reply['snippet']['publishedAt'],
-                        'likeCount': reply['snippet']['likeCount']
-                    }
-                    comment_info['replies'].append(reply_info)
+    comments_by_parent_id = {}
+    inline_replies_by_parent_id = {}
+
+    # 親コメントRawレスポンスはページをまたいですべて処理する。
+    for page_index, page in enumerate(comments_data, start=1):
+        if not isinstance(page, dict):
+            raise ValueError("コメントスレッドRawデータの{}ページ目が辞書ではありません。".format(page_index))
+        items = page.get("items")
+        if not isinstance(items, list):
+            raise ValueError("コメントスレッドRawデータの{}ページ目にitemsリストがありません。".format(page_index))
+
+        for item_index, item in enumerate(items, start=1):
+            if not isinstance(item, dict):
+                raise ValueError("コメントスレッドRawデータの{}ページ目、{}件目が辞書ではありません。".format(page_index, item_index))
+            thread_snippet = item.get("snippet")
+            if not isinstance(thread_snippet, dict):
+                raise ValueError("コメントスレッドRawデータの{}ページ目、{}件目にsnippetがありません。".format(page_index, item_index))
+            top_level = thread_snippet.get("topLevelComment")
+            top_level_info = normalize_comment(top_level, "トップレベル")
+            parent_id = top_level_info["id"]
+
+            comment_info = dict(top_level_info)
+            comment_info["replies"] = []
             processed_comments.append(comment_info)
+            comments_by_parent_id.setdefault(parent_id, []).append(comment_info)
+
+            # commentThreads.list(part="snippet,replies") に含まれる返信は、
+            # 別ファイルがない場合や返信Rawレコードが空の場合の部分データとして保持する。
+            inline_replies = []
+            replies_container = item.get("replies")
+            if replies_container is not None:
+                if not isinstance(replies_container, dict):
+                    raise ValueError("親コメント '{}' のrepliesが辞書ではありません。".format(parent_id))
+                reply_items = replies_container.get("comments", [])
+                if not isinstance(reply_items, list):
+                    raise ValueError("親コメント '{}' のreplies.commentsがリストではありません。".format(parent_id))
+                for reply in reply_items:
+                    inline_replies.append(normalize_comment(reply, "返信"))
+            inline_replies_by_parent_id.setdefault(parent_id, []).extend(inline_replies)
+
+    external_replies_by_parent_id = {}
+    if replies_data is not None:
+        if not isinstance(replies_data, list):
+            raise ValueError("返信Rawデータは、parent_idとraw_responsesを持つレコードのリストである必要があります。")
+
+        # 返信Rawファイル内の全レコード・全ページを親コメントIDごとに集約する。
+        for record_index, record in enumerate(replies_data, start=1):
+            if not isinstance(record, dict):
+                raise ValueError("返信Rawデータの{}件目が辞書ではありません。".format(record_index))
+            parent_id = record.get("parent_id")
+            raw_responses = record.get("raw_responses")
+            if not isinstance(parent_id, str) or not parent_id:
+                raise ValueError("返信Rawデータの{}件目に有効なparent_idがありません。".format(record_index))
+            if not isinstance(raw_responses, list):
+                raise ValueError("返信Rawデータの親コメント '{}' にraw_responsesリストがありません。".format(parent_id))
+
+            for page_index, page in enumerate(raw_responses, start=1):
+                if not isinstance(page, dict):
+                    raise ValueError("親コメント '{}' の返信Raw {}ページ目が辞書ではありません。".format(parent_id, page_index))
+                reply_items = page.get("items")
+                if not isinstance(reply_items, list):
+                    raise ValueError("親コメント '{}' の返信Raw {}ページ目にitemsリストがありません。".format(parent_id, page_index))
+                for reply in reply_items:
+                    normalized_reply = normalize_comment(reply, "返信")
+                    external_replies_by_parent_id.setdefault(parent_id, []).append(normalized_reply)
+
+    # 返信Rawの実データがあればそちらを優先し、なければ親スレッド内の返信を表示する。
+    for parent_id, parent_comments in comments_by_parent_id.items():
+        external_replies = external_replies_by_parent_id.get(parent_id, [])
+        selected_replies = external_replies or inline_replies_by_parent_id.get(parent_id, [])
+        for parent_comment in parent_comments:
+            parent_comment["replies"] = list(selected_replies)
+
     return processed_comments
 
 def generate_html_page(video_data: Dict, comments_data: List[Dict], channel_data: Dict, template_filename: str = 'pager-template.html', output_filename: str = 'index.html', output_dir: str = '') -> Optional[str]:
@@ -148,74 +220,82 @@ def main():
         print("フォルダが選択されませんでした。処理を終了します。")
         sys.exit(0) # ユーザーがキャンセルした場合、正常終了
 
-    # 選択されたフォルダ名が 'youtube_data_<動画ID>_<Y-m-d>' 形式であるかを検証
+    # 現行scraperのフォルダ名（日時まで）と、旧形式（日付のみ）の両方を検証
     selected_folder_name = os.path.basename(selected_folder_path)
-    if not (selected_folder_name.startswith("youtube_data_") and re.match(r"youtube_data_[a-zA-Z0-9_-]+_\d{4}-\d{2}-\d{2}", selected_folder_name)):
-        print(f"エラー: 選択されたフォルダ名 '{selected_folder_name}' は無効な形式です。")
-        print("フォルダ名は 'youtube_data_<動画ID>_<Y-m-d>' の形式である必要があります。")
+    folder_match = re.match(
+        r"^youtube_data_([a-zA-Z0-9_-]{11})_(\d{4}-\d{2}-\d{2})(?:_(\d{2})_(\d{2})_(\d{2}))?$",
+        selected_folder_name
+    )
+    if not folder_match:
+        print("エラー: 選択されたフォルダ名 '{}' は無効な形式です。".format(selected_folder_name))
+        print("形式: youtube_data_<動画ID>_<YYYY-MM-DD_HH_MM_SS>（旧形式のYYYY-MM-DDも可）")
         sys.exit(1) # 無効なフォルダ名の場合、エラー終了
+    folder_video_id = folder_match.group(1)
 
     print(f"選択されたフォルダ: {selected_folder_path}")
 
-    # 選択されたフォルダ内のJSONファイルからvideo_idとchannel_idを検出
+    # 選択フォルダ内のファイル名からvideo_idとchannel_idを検出
     actual_video_id = None
     actual_channel_id = None
 
     for filename in os.listdir(selected_folder_path):
         if filename.startswith("video_info_raw_") and filename.endswith(".json"):
-            match = re.match(r"video_info_raw_([a-zA-Z0-9_-]+)\.json", filename)
+            match = re.match(r"^video_info_raw_([a-zA-Z0-9_-]{11})\.json$", filename)
             if match:
                 actual_video_id = match.group(1)
-                print(f"情報: 選択されたフォルダ内のファイル名から video_id を検出しました: {actual_video_id}")
         elif filename.startswith("channel_info_raw_") and filename.endswith(".json"):
-            match = re.match(r"channel_info_raw_([a-zA-Z0-9_-]+)\.json", filename)
+            match = re.match(r"^channel_info_raw_([a-zA-Z0-9_-]+)\.json$", filename)
             if match:
                 actual_channel_id = match.group(1)
-                print(f"情報: 選択されたフォルダ内のファイル名から channel_id を検出しました: {actual_channel_id}")
 
-    # IDが見つからない場合のフォールバックとして、ダミーIDを使用
-    video_id_to_use = actual_video_id if actual_video_id else 'DUMMY_VIDEO_ID_ABC123'
-    channel_id_to_use = actual_channel_id if actual_channel_id else 'DUMMY_CHANNEL_ID_XYZ789'
+    # video_infoが欠落した部分データでも、フォルダ名から動画IDを特定できる。
+    if actual_video_id and actual_video_id != folder_video_id:
+        print("エラー: フォルダ名の動画IDとvideo_infoファイル名の動画IDが一致しません。")
+        sys.exit(1)
+    video_id_to_use = actual_video_id or folder_video_id
 
-    # JSONファイルのパスは選択されたフォルダ内
-    comments_json_path = os.path.join(selected_folder_path, f'comments_raw_{video_id_to_use}.json')
-    videos_json_path = os.path.join(selected_folder_path, f'video_info_raw_{video_id_to_use}.json')
-    channel_json_path = os.path.join(selected_folder_path, f'channel_info_raw_{channel_id_to_use}.json')
+    comments_json_path = os.path.join(selected_folder_path, "comments_raw_{}.json".format(video_id_to_use))
+    replies_json_path = os.path.join(selected_folder_path, "comment_replies_raw_{}.json".format(video_id_to_use))
+    videos_json_path = os.path.join(selected_folder_path, "video_info_raw_{}.json".format(video_id_to_use))
+    channel_json_path = (
+        os.path.join(selected_folder_path, "channel_info_raw_{}.json".format(actual_channel_id))
+        if actual_channel_id else None
+    )
 
+    # コメントRawは必須。欠落・JSON不正をダミーコメントや正常な空データに置き換えない。
     comments_data = load_json_data(comments_json_path)
-    videos_data = load_json_data(videos_json_path)
-    channel_data = load_json_data(channel_json_path) # チャンネルデータを読み込み
+    if comments_data is None:
+        print("エラー: コメントスレッドRawデータを読み込めません。ファイルの欠落またはJSON不正を確認してください。")
+        sys.exit(1)
 
-    # Fallback to dummy data if actual data is not found from selected folder
-    # comments_dataはリスト形式でロードされることを想定
-    if not comments_data or not (isinstance(comments_data, list) and comments_data and 'items' in comments_data[0]):
-        print(f"情報: '{comments_json_path}' が見つからないか読み込めません、または形式が不正です。ダミーコメントデータを使用します。")
-        # ダミーデータもリスト形式でラップされていることを確認
-        # pager-template-maker/default ディレクトリを参照するように変更
-        dummy_comments_path = os.path.join(DEFAULT_DATA_DIR, 'dummy_comments.json')
-        comments_data = load_json_data(dummy_comments_path)
-        if not comments_data or not (isinstance(comments_data, list) and comments_data and 'items' in comments_data[0]):
-            print("警告: ダミーコメントデータも読み込めませんでした、または形式が不正です。コメントなしで処理を続行します。")
-            comments_data = [{'items': []}] # 空のリストで、かつ最初の要素が'items'を持つ辞書
+    # 返信Rawファイルは取得データがある場合に保存されるため、存在しない場合は親スレッド内の返信だけを使用する。
+    replies_data = None
+    if os.path.exists(replies_json_path):
+        replies_data = load_json_data(replies_json_path)
+        if replies_data is None:
+            print("エラー: 返信RawデータのJSON形式が不正です。")
+            sys.exit(1)
+    else:
+        print("警告: 返信Rawファイルがありません。親スレッドRaw内に含まれる返信のみ表示します。")
 
-    if not videos_data:
-        print(f"情報: '{videos_json_path}' が見つからないか読み込めません。ダミー動画情報を使用します。")
-        dummy_video_path = os.path.join(DEFAULT_DATA_DIR, 'dummy_video_info.json')
-        videos_data = load_json_data(dummy_video_path)
-        if not videos_data:
-            print("警告: ダミー動画情報も読み込めませんでした。動画情報なしで処理を続行します。")
-            videos_data = {'items': [{ 'snippet': {} }]}
+    # 動画・チャンネル情報は任意。欠落時は空の情報として扱い、コメント処理は継続する。
+    videos_data = load_json_data(videos_json_path) if os.path.exists(videos_json_path) else None
+    if videos_data is None:
+        print("警告: 動画情報Rawデータがありません、または読み込めません。動画情報なしで続行します。")
+        videos_data = {"items": []}
 
-    if not channel_data: # Add fallback for channel data
-        print(f"情報: '{channel_json_path}' が見つからないか読み込めません。ダミーチャンネル情報を使用します。")
-        dummy_channel_path = os.path.join(DEFAULT_DATA_DIR, 'dummy_channel_info.json')
-        channel_data = load_json_data(dummy_channel_path)
-        if not channel_data:
-            print("警告: ダミーチャンネル情報も読み込めませんでした。チャンネル情報なしで処理を続行します。")
-            channel_data = {'items': [{ 'snippet': {} }]}
+    channel_data = load_json_data(channel_json_path) if channel_json_path and os.path.exists(channel_json_path) else None
+    if channel_data is None:
+        print("警告: チャンネル情報Rawデータがありません、または読み込めません。チャンネル情報なしで続行します。")
+        channel_data = {"items": []}
+
+    try:
+        processed_comments = process_youtube_comments(comments_data, replies_data)
+    except ValueError as e:
+        print("エラー: コメントRawデータの構造が不正です: {}".format(e))
+        sys.exit(1)
 
 
-    processed_comments = process_youtube_comments(comments_data)
 
     # 使用するテンプレートを指定 (例: 'pager-template.html' または 'example.html')
     template_to_use = 'pager-template.html' 
