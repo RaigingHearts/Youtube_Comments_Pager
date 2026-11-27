@@ -91,7 +91,11 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
     processed_comments = []
     comments_by_parent_id = {}
     inline_replies_by_parent_id = {}
+    inline_reply_ids_by_parent_id = {}
     expected_reply_counts_by_parent_id = {}
+    duplicate_parent_count = 0
+    duplicate_inline_reply_count = 0
+    duplicate_external_reply_count = 0
 
     # 親コメントRawレスポンスはページをまたいですべて処理する。
     for page_index, page in enumerate(comments_data, start=1):
@@ -119,12 +123,22 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
 
             comment_info = dict(top_level_info)
             comment_info["replies"] = []
-            processed_comments.append(comment_info)
-            comments_by_parent_id.setdefault(parent_id, []).append(comment_info)
+            parent_comments = comments_by_parent_id.setdefault(parent_id, [])
+            if parent_comments:
+                duplicate_parent_count += 1
+                first_parent = parent_comments[0]
+                if any(first_parent.get(key) != comment_info.get(key)
+                       for key in ("authorDisplayName", "textDisplay", "publishedAt")):
+                    print(
+                        "警告: 親コメントID '{}' の重複レコードで内容が一致しません。"
+                        "先に出現したレコードを採用します。".format(parent_id)
+                    )
+            else:
+                processed_comments.append(comment_info)
+                parent_comments.append(comment_info)
 
-            # commentThreads.list(part="snippet,replies") に含まれる返信は、
-            # 別ファイルがない場合や返信Rawレコードが空の場合の部分データとして保持する。
-            inline_replies = []
+            # commentThreads.list(part="snippet,replies") の返信プレビューも、
+            # 外部返信Rawが部分保存されている場合に利用できるよう保持する。
             replies_container = item.get("replies")
             if replies_container is not None:
                 if not isinstance(replies_container, dict):
@@ -132,11 +146,32 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
                 reply_items = replies_container.get("comments", [])
                 if not isinstance(reply_items, list):
                     raise ValueError("親コメント '{}' のreplies.commentsがリストではありません。".format(parent_id))
+                inline_replies = inline_replies_by_parent_id.setdefault(parent_id, [])
+                inline_seen = inline_reply_ids_by_parent_id.setdefault(parent_id, set())
                 for reply in reply_items:
-                    inline_replies.append(normalize_comment(reply, "返信"))
-            inline_replies_by_parent_id.setdefault(parent_id, []).extend(inline_replies)
+                    normalized_reply = normalize_comment(reply, "返信")
+                    if normalized_reply["id"] in inline_seen:
+                        duplicate_inline_reply_count += 1
+                        continue
+                    inline_seen.add(normalized_reply["id"])
+                    inline_replies.append(normalized_reply)
+
+    if duplicate_parent_count:
+        print(
+            "警告: 親コメントRawに重複IDが{}件あります。"
+            "重複表示を避け、先に出現した親コメントを採用しました。".format(duplicate_parent_count)
+        )
+
+    # 最後に保存された親コメントページにnextPageTokenが残っている場合、
+    # そのRaw配列の後ろに未保存ページが存在する可能性がある。
+    if comments_data and isinstance(comments_data[-1], dict) and comments_data[-1].get("nextPageToken"):
+        print(
+            "警告: 最後の親コメントRawページにnextPageTokenがあります。"
+            "後続ページが保存されていない可能性があります（取得状態の判定ではありません）。"
+        )
 
     external_replies_by_parent_id = {}
+    reply_id_owner = {}
     if replies_data is not None:
         if not isinstance(replies_data, list):
             raise ValueError("返信Rawデータは、parent_idとraw_responsesを持つレコードのリストである必要があります。")
@@ -160,17 +195,59 @@ def process_youtube_comments(comments_data: Any, replies_data: Any = None) -> Li
                     raise ValueError("親コメント '{}' の返信Raw {}ページ目にitemsリストがありません。".format(parent_id, page_index))
                 for reply in reply_items:
                     normalized_reply = normalize_comment(reply, "返信")
+                    reply_id = normalized_reply["id"]
+                    previous_parent_id = reply_id_owner.get(reply_id)
+                    if previous_parent_id is not None:
+                        if previous_parent_id == parent_id:
+                            duplicate_external_reply_count += 1
+                            continue
+                        print(
+                            "警告: 返信ID '{}' が複数の親コメントに紐付いています。"
+                            "先に出現した親 '{}' のレコードを採用し、親 '{}' の重複を除外します。".format(
+                                reply_id, previous_parent_id, parent_id
+                            )
+                        )
+                        duplicate_external_reply_count += 1
+                        continue
+                    reply_id_owner[reply_id] = parent_id
                     external_replies_by_parent_id.setdefault(parent_id, []).append(normalized_reply)
+
+            # 最後の返信Rawページにtokenが残る場合、後続ページが保存されていない可能性がある。
+            if raw_responses and isinstance(raw_responses[-1], dict) and raw_responses[-1].get("nextPageToken"):
+                print(
+                    "警告: 親コメント '{}' の最後の返信RawページにnextPageTokenがあります。"
+                    "後続ページが保存されていない可能性があります（取得状態の判定ではありません）。".format(parent_id)
+                )
+
+    if duplicate_external_reply_count:
+        print(
+            "警告: 返信Rawに重複IDまたは複数親への重複紐付けが{}件あります。"
+            "重複表示を避け、先に出現したレコードを採用しました。".format(duplicate_external_reply_count)
+        )
+    if duplicate_inline_reply_count:
+        print(
+            "情報: 親スレッドRaw内の返信プレビュー重複を{}件除外しました。".format(
+                duplicate_inline_reply_count
+            )
+        )
 
     # 親コメントが欠落している返信RawはHTMLに紐付けられないため、警告して区別する。
     for parent_id in external_replies_by_parent_id:
         if parent_id not in comments_by_parent_id:
             print("警告: 返信Rawの親コメント '{}' がコメントスレッドRawにありません。返信を表示できません。".format(parent_id))
 
-    # 返信Rawの実データがあればそちらを優先し、なければ親スレッド内の返信を表示する。
+    # 外部返信Rawと親スレッド内の返信プレビューをIDで統合する。
+    # 外部Rawが部分保存でも、プレビューにしかない返信を失わない。
     for parent_id, parent_comments in comments_by_parent_id.items():
         external_replies = external_replies_by_parent_id.get(parent_id, [])
-        selected_replies = external_replies or inline_replies_by_parent_id.get(parent_id, [])
+        inline_replies = inline_replies_by_parent_id.get(parent_id, [])
+        selected_replies = []
+        selected_reply_ids = set()
+        for reply in external_replies + inline_replies:
+            if reply["id"] in selected_reply_ids:
+                continue
+            selected_reply_ids.add(reply["id"])
+            selected_replies.append(reply)
         expected_reply_count = expected_reply_counts_by_parent_id.get(parent_id, 0)
         if expected_reply_count > len(selected_replies):
             print(
