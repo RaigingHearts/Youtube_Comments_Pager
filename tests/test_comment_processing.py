@@ -236,6 +236,40 @@ class ProcessYoutubeCommentsTests(unittest.TestCase):
             )
 
 
+class ExternalReplyCrossParentDedupTests(unittest.TestCase):
+    def test_duplicate_external_reply_id_keeps_first_parent_and_warns(self):
+        duplicate_reply = make_comment("reply-duplicate", "same-reply")
+        comments_data = [
+            make_thread_page(make_thread("parent-first")),
+            make_thread_page(make_thread("parent-later")),
+        ]
+        replies_data = [
+            {
+                "parent_id": "parent-first",
+                "raw_responses": [make_reply_page(duplicate_reply)],
+            },
+            {
+                "parent_id": "parent-later",
+                "raw_responses": [make_reply_page(duplicate_reply)],
+            },
+        ]
+
+        with self.assertLogs("main", level="WARNING") as captured:
+            result = process_youtube_comments(comments_data, replies_data)
+
+        self.assertEqual(
+            [reply["id"] for reply in result[0]["replies"]],
+            ["reply-duplicate"],
+        )
+        self.assertEqual(result[1]["replies"], [])
+        self.assertTrue(
+            any("先に出現した親 'parent-first'" in message
+                and "親 'parent-later' の重複を除外" in message
+                for message in captured.output),
+            captured.output,
+        )
+
+
 class MainVideoIdValidationTests(unittest.TestCase):
     def test_exits_when_folder_and_video_info_filename_ids_mismatch(self):
         with tempfile.TemporaryDirectory() as temp_dir:
