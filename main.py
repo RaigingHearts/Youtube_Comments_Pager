@@ -4,6 +4,7 @@ import logging
 import os
 import re  # 正規表現モジュールをインポート
 import shutil  # ファイル操作（フォルダのコピー）のためにインポート
+import stat  # リンク／再解析ポイントの検出
 import sys  # sysモジュールをインポート
 import tempfile  # 静的ファイル更新時の一時ファイル作成
 import tkinter as tk  # tkinterをインポート
@@ -32,11 +33,27 @@ RAWDATA_DIR = os.path.join(APPLICATION_ROOT_DIR, 'rawdata')
 
 # OUTPUT_DIR は動的に設定されるため、ここでは初期化しない
 
+def _is_link_or_reparse_point(path: str) -> bool:
+    """
+    Windowsのジャンクション等を含むリンク／再解析ポイントを検出します。
+    lstat()でリンク先ではなくパス自体の属性を確認します。
+    """
+    try:
+        path_stat = os.lstat(path)
+    except FileNotFoundError:
+        return False
+
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    file_attributes = getattr(path_stat, "st_file_attributes", 0)
+    return stat.S_ISLNK(path_stat.st_mode) or bool(file_attributes & reparse_flag)
+
+
 def sync_static_files(source_dir: str, target_dir: str) -> None:
     """
     同梱staticを生成先へ反映し、同梱ファイル以外は保持します。
 
-    同じ相対パスにある同梱ファイルは置き換えます。各ファイルの置き換えは
+    同じ相対パスにある同梱ファイルは置き換えます。同期先のリンク／再解析ポイントは
+    外部パスへの書き込みを避けるため拒否します。各ファイルの置き換えは
     os.replace()で行いますが、複数ファイル全体を一括で原子的に更新するものではありません。
     """
     if not os.path.isdir(source_dir):
@@ -55,18 +72,36 @@ def sync_static_files(source_dir: str, target_dir: str) -> None:
             relative_path = os.path.relpath(source_path, source_dir)
             source_files.append((source_path, relative_path))
 
-    if os.path.exists(target_dir) and not os.path.isdir(target_dir):
+    # target static自体がリンク／ジャンクション等なら、リンク先を同期先にしない。
+    if _is_link_or_reparse_point(target_dir):
+        raise OSError("生成先staticがリンクまたは再解析ポイントです。同期を中断します: {}".format(target_dir))
+    if os.path.lexists(target_dir) and not os.path.isdir(target_dir):
         raise OSError("生成先staticのパスがディレクトリではありません: {}".format(target_dir))
 
-    # 既存データへの変更前に、同梱ファイル・ディレクトリとの型衝突を確認する。
+    # 既存データへの変更前に、配置経路のリンク／再解析ポイントと型衝突を検査する。
+    # リンク先が出力フォルダ外であっても、リンク経由の書き込みは許可しない。
     for relative_dir in source_directories:
-        destination = os.path.join(target_dir, relative_dir)
-        if os.path.exists(destination) and not os.path.isdir(destination):
+        destination = target_dir
+        for component in relative_dir.split(os.sep):
+            destination = os.path.join(destination, component)
+            if _is_link_or_reparse_point(destination):
+                raise OSError("同期先ディレクトリがリンクまたは再解析ポイントです: {}".format(destination))
+        if os.path.lexists(destination) and not os.path.isdir(destination):
             raise OSError("同梱ディレクトリと既存ファイルが衝突しています: {}".format(destination))
 
     for source_path, relative_path in source_files:
         destination = os.path.join(target_dir, relative_path)
-        if os.path.exists(destination) and not os.path.isfile(destination):
+        destination_parent = os.path.dirname(destination)
+        if destination_parent != target_dir:
+            current_parent = target_dir
+            relative_parent = os.path.relpath(destination_parent, target_dir)
+            for component in relative_parent.split(os.sep):
+                current_parent = os.path.join(current_parent, component)
+                if _is_link_or_reparse_point(current_parent):
+                    raise OSError("同期先ディレクトリがリンクまたは再解析ポイントです: {}".format(current_parent))
+        if _is_link_or_reparse_point(destination):
+            raise OSError("同期先ファイルがリンクまたは再解析ポイントです: {}".format(destination))
+        if os.path.lexists(destination) and not os.path.isfile(destination):
             raise OSError("同梱ファイルと既存ディレクトリ等が衝突しています: {}".format(destination))
 
     if not os.path.exists(target_dir):
