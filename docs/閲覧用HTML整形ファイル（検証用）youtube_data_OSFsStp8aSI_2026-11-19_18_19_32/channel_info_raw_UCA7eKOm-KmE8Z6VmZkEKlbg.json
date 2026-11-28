@@ -1,0 +1,44 @@
+{
+    "kind": "youtube#channelListResponse",
+    "etag": "2Gv4yEC8nzQIc_rZQjIVLM7W1qs",
+    "pageInfo": {
+        "totalResults": 1,
+        "resultsPerPage": 5
+    },
+    "items": [
+        {
+            "kind": "youtube#channel",
+            "etag": "ZTUKoIGIjKfdO0nsEh_2-hM4De0",
+            "id": "UCA7eKOm-KmE8Z6VmZkEKlbg",
+            "snippet": {
+                "title": "すいじば SUIJIBA",
+                "description": "運営者はGenという名前です。\n料理動画を投稿しております。\n日々精進。\n\n\n■メンバーシップ登録は一番下の URLから↓\n週に2,3回、リスナーさんとアットホームすぎる話を交わしておりません。\n月額90円でいつでもやめられますのでお気軽に。ご新規さん大歓迎です！\n\n\nご用の方はどのような内容でも下記のアドレスへお気軽に↓\ntokyomeshinotomo@gmail.com\n※無所属個人で活動しております。\n※企業案件につきまして、ギフティングや無償では承っておりませんので何卒よろしくお願いいたします。\n※メールを見逃してご返信できない場合もございますので、重要なご用件であればお手数ですが複数回ご連絡ください。\n",
+                "customUrl": "@suijiba",
+                "publishedAt": "2017-06-26T06:18:20Z",
+                "thumbnails": {
+                    "default": {
+                        "url": "https://yt3.ggpht.com/WcBapnSWWae7D-wQ3fVDONhJsCbQGniokgCWaTbUrIS0XA5GdmnyiBzOhvY3g4sxChQ29fkxGg=s88-c-k-c0x00ffffff-no-rj",
+                        "width": 88,
+                        "height": 88
+                    },
+                    "medium": {
+                        "url": "https://yt3.ggpht.com/WcBapnSWWae7D-wQ3fVDONhJsCbQGniokgCWaTbUrIS0XA5GdmnyiBzOhvY3g4sxChQ29fkxGg=s240-c-k-c0x00ffffff-no-rj",
+                        "width": 240,
+                        "height": 240
+                    },
+                    "high": {
+                        "url": "https://yt3.ggpht.com/WcBapnSWWae7D-wQ3fVDONhJsCbQGniokgCWaTbUrIS0XA5GdmnyiBzOhvY3g4sxChQ29fkxGg=s800-c-k-c0x00ffffff-no-rj",
+                        "width": 800,
+                        "height": 800
+                    }
+                },
+                "defaultLanguage": "ja",
+                "localized": {
+                    "title": "すいじば SUIJIBA",
+                    "description": "運営者はGenという名前です。\n料理動画を投稿しております。\n日々精進。\n\n\n■メンバーシップ登録は一番下の URLから↓\n週に2,3回、リスナーさんとアットホームすぎる話を交わしておりません。\n月額90円でいつでもやめられますのでお気軽に。ご新規さん大歓迎です！\n\n\nご用の方はどのような内容でも下記のアドレスへお気軽に↓\ntokyomeshinotomo@gmail.com\n※無所属個人で活動しております。\n※企業案件につきまして、ギフティングや無償では承っておりませんので何卒よろしくお願いいたします。\n※メールを見逃してご返信できない場合もございますので、重要なご用件であればお手数ですが複数回ご連絡ください。\n"
+                },
+                "country": "JP"
+            }
+        }
+    ]
+}

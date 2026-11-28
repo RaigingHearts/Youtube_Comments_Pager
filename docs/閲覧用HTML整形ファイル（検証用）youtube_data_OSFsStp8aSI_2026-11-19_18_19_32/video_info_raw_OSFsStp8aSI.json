@@ -1,0 +1,57 @@
+{
+    "kind": "youtube#videoListResponse",
+    "etag": "QHKhcs_rH9sxvxdANM0k2IeRkOc",
+    "items": [
+        {
+            "kind": "youtube#video",
+            "etag": "WTtQ7cBWu9lZUl3D4VTQ28wzcOI",
+            "id": "OSFsStp8aSI",
+            "snippet": {
+                "publishedAt": "2024-03-30T07:29:56Z",
+                "channelId": "UCA7eKOm-KmE8Z6VmZkEKlbg",
+                "title": "板チョコアイス完全再現への道",
+                "description": "提供: 板チョコアイス（森永製菓）\n\nhttps://www.morinaga.co.jp/itachoco/\n\n\n\n\n◾️普段使ってる調理器具・調味料とか\n\n◯鍋・フライパン系\n・小型ミルクパン(柳総理)\n　https://amzn.to/47FMUkq\n・テフロン深底\n　https://amzn.to/4qzQft1\n・ステンレス浅底\n　https://amzn.to/47odltx\n・ステーキ用　バーミキュラフライパン(26cm)\n　https://amzn.to/4obL8h1\n・卵焼き器(テフロン)\n　https://amzn.to/47v897t\n・卵焼き器(銅)\n　https://amzn.to/3WnL0Pe\n・土鍋\n　https://amzn.to/4niVDxD\n・圧力鍋\n　https://amzn.to/4qzRdFF\n\n◯家電系\n・ミキサー\n　https://amzn.to/4qqVIlN\n・オーブンレンジ(動画のものは生産終了のため、後継器)\n　https://amzn.to/4odlvwc\n・オーブンレンジ(動画内で使用しているもの・中古)\n　https://amzn.to/3JdNCMD\n\n◯小物系\n・高感度温度計\n　https://amzn.to/4odmOeA\n・縦型ピーラー\n　https://amzn.to/47qDMPC\n・ざるや網、泡立て器は下村企販で揃えています\n　ざる1：https://amzn.to/4o5fK3x\n　ざる2：https://amzn.to/4qtnm1u\n　泡立て器：https://amzn.to/43CXSVr\n\n・トルティーヤプレス\n　https://amzn.to/3JdMDMr\n・保存容器(耐熱ガラス)\n　https://amzn.to/4nnq460\n・ボウルその1\n　https://amzn.to/3L7keby\n・ボウルその2\n　https://amzn.to/4oCjLwi\n\n↓安定の無印良品↓\n・鍋つかみ\n　https://amzn.to/47rhDk6\n・鍋つかみ(鍋敷き兼用タイプ)\n　https://amzn.to/47qO6aj\n・ゴムベラ\n　https://amzn.to/48GUlsK\n・大さじスプーン\n　https://amzn.to/4nrRho6\n・小さじスプーン\n　https://amzn.to/47j2anv\n・トレー(大)\n　https://amzn.to/4o8INU5\n・トレー(大)にはまる網\n　https://amzn.to/49kQ7Hq\n・トレー(小)\n　https://amzn.to/3J5W3JU\n・トレー(小)にはまる網\n　https://amzn.to/4oeJMlI\n・お玉　小\n　https://amzn.to/47reQYa\n・お玉　大\n　https://amzn.to/42Wh7sU\n\n◯食品\n・マサ粉(トルティーヤ生地)\n※動画では基本白(ホワイト)を使用。\n　https://amzn.to/3LaJNIw",
+                "thumbnails": {
+                    "default": {
+                        "url": "https://i.ytimg.com/vi/OSFsStp8aSI/default.jpg",
+                        "width": 120,
+                        "height": 90
+                    },
+                    "medium": {
+                        "url": "https://i.ytimg.com/vi/OSFsStp8aSI/mqdefault.jpg",
+                        "width": 320,
+                        "height": 180
+                    },
+                    "high": {
+                        "url": "https://i.ytimg.com/vi/OSFsStp8aSI/hqdefault.jpg",
+                        "width": 480,
+                        "height": 360
+                    },
+                    "standard": {
+                        "url": "https://i.ytimg.com/vi/OSFsStp8aSI/sddefault.jpg",
+                        "width": 640,
+                        "height": 480
+                    },
+                    "maxres": {
+                        "url": "https://i.ytimg.com/vi/OSFsStp8aSI/maxresdefault.jpg",
+                        "width": 1280,
+                        "height": 720
+                    }
+                },
+                "channelTitle": "すいじば SUIJIBA",
+                "categoryId": "26",
+                "liveBroadcastContent": "none",
+                "defaultLanguage": "ja",
+                "localized": {
+                    "title": "板チョコアイス完全再現への道",
+                    "description": "提供: 板チョコアイス（森永製菓）\n\nhttps://www.morinaga.co.jp/itachoco/\n\n\n\n\n◾️普段使ってる調理器具・調味料とか\n\n◯鍋・フライパン系\n・小型ミルクパン(柳総理)\n　https://amzn.to/47FMUkq\n・テフロン深底\n　https://amzn.to/4qzQft1\n・ステンレス浅底\n　https://amzn.to/47odltx\n・ステーキ用　バーミキュラフライパン(26cm)\n　https://amzn.to/4obL8h1\n・卵焼き器(テフロン)\n　https://amzn.to/47v897t\n・卵焼き器(銅)\n　https://amzn.to/3WnL0Pe\n・土鍋\n　https://amzn.to/4niVDxD\n・圧力鍋\n　https://amzn.to/4qzRdFF\n\n◯家電系\n・ミキサー\n　https://amzn.to/4qqVIlN\n・オーブンレンジ(動画のものは生産終了のため、後継器)\n　https://amzn.to/4odlvwc\n・オーブンレンジ(動画内で使用しているもの・中古)\n　https://amzn.to/3JdNCMD\n\n◯小物系\n・高感度温度計\n　https://amzn.to/4odmOeA\n・縦型ピーラー\n　https://amzn.to/47qDMPC\n・ざるや網、泡立て器は下村企販で揃えています\n　ざる1：https://amzn.to/4o5fK3x\n　ざる2：https://amzn.to/4qtnm1u\n　泡立て器：https://amzn.to/43CXSVr\n\n・トルティーヤプレス\n　https://amzn.to/3JdMDMr\n・保存容器(耐熱ガラス)\n　https://amzn.to/4nnq460\n・ボウルその1\n　https://amzn.to/3L7keby\n・ボウルその2\n　https://amzn.to/4oCjLwi\n\n↓安定の無印良品↓\n・鍋つかみ\n　https://amzn.to/47rhDk6\n・鍋つかみ(鍋敷き兼用タイプ)\n　https://amzn.to/47qO6aj\n・ゴムベラ\n　https://amzn.to/48GUlsK\n・大さじスプーン\n　https://amzn.to/4nrRho6\n・小さじスプーン\n　https://amzn.to/47j2anv\n・トレー(大)\n　https://amzn.to/4o8INU5\n・トレー(大)にはまる網\n　https://amzn.to/49kQ7Hq\n・トレー(小)\n　https://amzn.to/3J5W3JU\n・トレー(小)にはまる網\n　https://amzn.to/4oeJMlI\n・お玉　小\n　https://amzn.to/47reQYa\n・お玉　大\n　https://amzn.to/42Wh7sU\n\n◯食品\n・マサ粉(トルティーヤ生地)\n※動画では基本白(ホワイト)を使用。\n　https://amzn.to/3LaJNIw"
+                },
+                "defaultAudioLanguage": "ja"
+            }
+        }
+    ],
+    "pageInfo": {
+        "totalResults": 1,
+        "resultsPerPage": 1
+    }
+}
