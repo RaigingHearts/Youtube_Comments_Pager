@@ -1,6 +1,8 @@
 import os
 import tempfile
 import unittest
+import subprocess
+import sys
 from unittest.mock import patch
 
 import main
@@ -17,6 +19,23 @@ class SyncStaticFilesTests(unittest.TestCase):
     def read_file(self, path):
         with open(path, "r", encoding="utf-8") as file_obj:
             return file_obj.read()
+
+    def create_directory_link(self, link_path, target_path):
+        """Windowsでは管理者権限不要のジャンクションを作成し、他OSではsymlinkを使用する。"""
+        if sys.platform == "win32":
+            try:
+                subprocess.check_call(
+                    ["cmd", "/c", "mklink", "/J", link_path, target_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except (OSError, subprocess.CalledProcessError):
+                self.skipTest("Windowsジャンクションを作成できない環境です")
+        else:
+            try:
+                os.symlink(target_path, link_path, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("ディレクトリシンボリックリンクを作成できない環境です")
 
     def test_creates_target_and_copies_bundled_files(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -120,6 +139,46 @@ class SyncStaticFilesTests(unittest.TestCase):
                 ["style.css"],
             )
 
+
+    def test_rejects_target_static_directory_link_without_modifying_external_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = os.path.join(temp_dir, "source")
+            outside = os.path.join(temp_dir, "outside")
+            target = os.path.join(temp_dir, "output", "static")
+            self.write_file(os.path.join(source, "css", "style.css"), "bundled-css")
+            self.write_file(os.path.join(outside, "css", "style.css"), "external-original")
+            os.makedirs(os.path.dirname(target))
+            self.create_directory_link(target, outside)
+
+            with self.assertRaises(OSError):
+                main.sync_static_files(source, target)
+
+            self.assertEqual(
+                self.read_file(os.path.join(outside, "css", "style.css")),
+                "external-original",
+            )
+
+    def test_rejects_nested_directory_link_without_modifying_external_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = os.path.join(temp_dir, "source")
+            target = os.path.join(temp_dir, "output", "static")
+            outside = os.path.join(temp_dir, "outside")
+            self.write_file(os.path.join(source, "css", "style.css"), "bundled-css")
+            self.write_file(os.path.join(target, "keep.txt"), "existing-user-file")
+            self.write_file(os.path.join(outside, "style.css"), "external-original")
+            self.create_directory_link(os.path.join(target, "css"), outside)
+
+            with self.assertRaises(OSError):
+                main.sync_static_files(source, target)
+
+            self.assertEqual(
+                self.read_file(os.path.join(outside, "style.css")),
+                "external-original",
+            )
+            self.assertEqual(
+                self.read_file(os.path.join(target, "keep.txt")),
+                "existing-user-file",
+            )
 
 if __name__ == "__main__":
     unittest.main()
