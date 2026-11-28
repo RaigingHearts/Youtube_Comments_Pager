@@ -1,0 +1,125 @@
+import os
+import tempfile
+import unittest
+from unittest.mock import patch
+
+import main
+
+
+class SyncStaticFilesTests(unittest.TestCase):
+    def write_file(self, path, content):
+        directory = os.path.dirname(path)
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
+        with open(path, "w", encoding="utf-8") as file_obj:
+            file_obj.write(content)
+
+    def read_file(self, path):
+        with open(path, "r", encoding="utf-8") as file_obj:
+            return file_obj.read()
+
+    def test_creates_target_and_copies_bundled_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = os.path.join(temp_dir, "source")
+            target = os.path.join(temp_dir, "output", "static")
+            self.write_file(os.path.join(source, "css", "style.css"), "bundled-css")
+
+            main.sync_static_files(source, target)
+
+            self.assertEqual(
+                self.read_file(os.path.join(target, "css", "style.css")),
+                "bundled-css",
+            )
+
+    def test_preserves_user_files_and_directories_and_overwrites_bundled_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = os.path.join(temp_dir, "source")
+            target = os.path.join(temp_dir, "output", "static")
+            self.write_file(os.path.join(source, "css", "style.css"), "new-standard-css")
+            self.write_file(os.path.join(source, "images", "logo.png"), "bundled-image")
+            self.write_file(os.path.join(target, "css", "style.css"), "old-css")
+            self.write_file(os.path.join(target, "css", "custom.css"), "custom-css")
+            self.write_file(os.path.join(target, "images", "custom.png"), "custom-image")
+            self.write_file(os.path.join(target, "user-folder", "notes.txt"), "user-notes")
+
+            main.sync_static_files(source, target)
+
+            self.assertEqual(
+                self.read_file(os.path.join(target, "css", "style.css")),
+                "new-standard-css",
+            )
+            self.assertEqual(
+                self.read_file(os.path.join(target, "images", "logo.png")),
+                "bundled-image",
+            )
+            self.assertEqual(
+                self.read_file(os.path.join(target, "css", "custom.css")),
+                "custom-css",
+            )
+            self.assertEqual(
+                self.read_file(os.path.join(target, "images", "custom.png")),
+                "custom-image",
+            )
+            self.assertEqual(
+                self.read_file(os.path.join(target, "user-folder", "notes.txt")),
+                "user-notes",
+            )
+
+    def test_path_type_conflict_fails_before_existing_files_are_changed(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = os.path.join(temp_dir, "source")
+            target = os.path.join(temp_dir, "output", "static")
+            self.write_file(os.path.join(source, "css", "style.css"), "bundled-css")
+            self.write_file(os.path.join(source, "images", "logo.png"), "bundled-image")
+            self.write_file(os.path.join(target, "css", "style.css"), "existing-css")
+            self.write_file(os.path.join(target, "images", "logo.png", "nested.txt"), "conflict")
+
+            with self.assertRaises(OSError):
+                main.sync_static_files(source, target)
+
+            self.assertEqual(
+                self.read_file(os.path.join(target, "css", "style.css")),
+                "existing-css",
+            )
+            self.assertEqual(
+                self.read_file(os.path.join(target, "images", "logo.png", "nested.txt")),
+                "conflict",
+            )
+
+    def test_missing_source_does_not_damage_target(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = os.path.join(temp_dir, "missing-source")
+            target = os.path.join(temp_dir, "output", "static")
+            self.write_file(os.path.join(target, "custom.css"), "keep-me")
+
+            with self.assertRaises(FileNotFoundError):
+                main.sync_static_files(source, target)
+
+            self.assertEqual(
+                self.read_file(os.path.join(target, "custom.css")),
+                "keep-me",
+            )
+
+    def test_copy_failure_preserves_existing_standard_file_and_cleans_temp_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = os.path.join(temp_dir, "source")
+            target = os.path.join(temp_dir, "output", "static")
+            self.write_file(os.path.join(source, "css", "style.css"), "new-css")
+            self.write_file(os.path.join(target, "css", "style.css"), "old-css")
+
+            with patch("main.shutil.copyfile", side_effect=OSError("simulated copy failure")):
+                with self.assertRaises(OSError):
+                    main.sync_static_files(source, target)
+
+            self.assertEqual(
+                self.read_file(os.path.join(target, "css", "style.css")),
+                "old-css",
+            )
+            self.assertEqual(
+                os.listdir(os.path.join(target, "css")),
+                ["style.css"],
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()
