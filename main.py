@@ -137,22 +137,95 @@ def sync_static_files(source_dir: str, target_dir: str) -> None:
                     logger.warning("静的ファイル更新用の一時ファイルを削除できません: {}".format(temporary_path))
 
 
+class JSONInputError(Exception):
+    """JSON入力の読み込み失敗。対象パスと原因を保持します。"""
+
+    def __init__(self, filepath: str, cause: Exception):
+        self.filepath = filepath
+        self.cause = cause
+        super().__init__("{}: {}".format(filepath, cause))
+
+
 def load_json_data(filepath: str) -> Any:
-    """
-    指定されたJSONファイルからデータを読み込みます。
-    """
+    """JSON読み込み失敗をNoneに変換せず、対象パスと原因を例外で伝えます。"""
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
-    except FileNotFoundError:
-        logger.debug(f"ファイルが見つかりません - {filepath}")
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise JSONInputError(filepath, e) from e
+
+
+def load_optional_json_data(filepath: str) -> Any:
+    """任意JSONの読み込み失敗を警告し、Noneとして返します。"""
+    try:
+        return load_json_data(filepath)
+    except JSONInputError as e:
+        logger.warning("任意JSONを利用できません。ファイル '{}'、原因: {}: {}。この情報なしで続行します。".format(
+            e.filepath, type(e.cause).__name__, e.cause
+        ))
         return None
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        logger.debug(f"JSON形式または文字コードが不正です - {filepath}")
+
+def validate_optional_metadata(data: Any, label: str) -> Dict:
+    """HTML生成で参照する範囲の任意メタデータ構造を検証します。"""
+    def invalid(reason: str) -> Dict:
+        logger.warning("{}の構造が不正です（{}）。{}情報なしで続行します。".format(
+            label, reason, label
+        ))
+        return {"items": []}
+
+    if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+        return invalid("itemsがリストではありません")
+
+    items = data["items"]
+    if not items:
+        return data
+
+    first_item = items[0]
+    if not isinstance(first_item, dict):
+        return invalid("items[0]がオブジェクトではありません")
+
+    if "snippet" not in first_item:
+        return data
+
+    snippet = first_item["snippet"]
+    if not isinstance(snippet, dict):
+        return invalid("items[0].snippetがオブジェクトではありません")
+
+    if label == "動画情報Raw":
+        description = snippet.get("description", "")
+        if not isinstance(description, str):
+            return invalid("snippet.descriptionが文字列ではありません")
+    elif label == "チャンネル情報Raw":
+        thumbnails = snippet.get("thumbnails")
+        if thumbnails is not None:
+            if not isinstance(thumbnails, dict):
+                return invalid("snippet.thumbnailsがオブジェクトではありません")
+            high = thumbnails.get("high")
+            if high is not None and not isinstance(high, dict):
+                return invalid("snippet.thumbnails.highがオブジェクトではありません")
+
+    return data
+
+def load_optional_reply_data(filepath: str) -> Any:
+    """返信Rawが任意JSONとして使える場合に読み込み、nullや失敗は警告してNoneを返します。"""
+    if not os.path.exists(filepath):
+        logger.warning("返信Rawファイルがありません。親スレッドRaw内に含まれる返信のみ表示します。")
         return None
-    except OSError as e:
-        logger.debug(f"ファイルを読み込めません - {filepath}: {e}")
+
+    try:
+        data = load_json_data(filepath)
+    except JSONInputError as e:
+        logger.warning("返信Rawを読み込めません。ファイル '{}'、原因: {}: {}。インライン返信のみで続行します。".format(
+            e.filepath, type(e.cause).__name__, e.cause
+        ))
         return None
+
+    if data is None:
+        logger.warning("返信Raw '{}' のトップレベル値がnullです。インライン返信のみで続行します。".format(
+            filepath
+        ))
+    return data
+
 
 def get_video_id_from_data_folder(folder_name: str) -> Optional[str]:
     """
@@ -530,37 +603,40 @@ def main():
     )
 
     # コメントRawは必須。欠落・JSON不正をダミーコメントや正常な空データに置き換えない。
-    comments_data = load_json_data(comments_json_path)
-    if comments_data is None:
-        logger.error("コメントスレッドRawデータを読み込めません。ファイルの欠落またはJSON不正を確認してください。")
+    try:
+        comments_data = load_json_data(comments_json_path)
+    except JSONInputError as e:
+        logger.error("必須コメントRawを読み込めません。ファイル '{}'、原因: {}: {}".format(
+            e.filepath, type(e.cause).__name__, e.cause
+        ))
         sys.exit(1)
 
-    # 返信Rawファイルは取得データがある場合に保存されるため、存在しない場合は親スレッド内の返信だけを使用する。
-    replies_data = None
-    if os.path.exists(replies_json_path):
-        replies_data = load_json_data(replies_json_path)
-        if replies_data is None:
-            logger.error("返信RawデータのJSON形式が不正です。")
-            sys.exit(1)
-    else:
-        logger.warning("返信Rawファイルがありません。親スレッドRaw内に含まれる返信のみ表示します。")
+    # 返信Rawは任意。欠落・読み込み失敗・トップレベルnull時はインライン返信のみを使用する。
+    replies_data = load_optional_reply_data(replies_json_path)
 
-    # 動画・チャンネル情報は任意。欠落時は空の情報として扱い、コメント処理は継続する。
-    videos_data = load_json_data(videos_json_path) if os.path.exists(videos_json_path) else None
-    if videos_data is None:
-        logger.warning("動画情報Rawデータがありません、または読み込めません。動画情報なしで続行します。")
-        videos_data = {"items": []}
+    # 動画・チャンネル情報は任意。HTML生成で参照する内部構造が不正なら空情報として続行する。
+    videos_data = validate_optional_metadata(
+        load_optional_json_data(videos_json_path), "動画情報Raw"
+    )
 
-    channel_data = load_json_data(channel_json_path) if channel_json_path and os.path.exists(channel_json_path) else None
-    if channel_data is None:
-        logger.warning("チャンネル情報Rawデータがありません、または読み込めません。チャンネル情報なしで続行します。")
-        channel_data = {"items": []}
+    channel_data = validate_optional_metadata(
+        load_optional_json_data(channel_json_path) if channel_json_path else None,
+        "チャンネル情報Raw"
+    )
 
     try:
         processed_comments = process_youtube_comments(comments_data, replies_data)
     except ValueError as e:
-        logger.error("コメントRawデータの構造が不正です: {}".format(e))
-        sys.exit(1)
+        if replies_data is not None:
+            logger.warning("返信Rawの構造が不正です: {}。返信Rawを除外し、インライン返信のみで再処理します。".format(e))
+            try:
+                processed_comments = process_youtube_comments(comments_data, None)
+            except ValueError as comments_error:
+                logger.error("コメントRawデータの構造が不正です: {}".format(comments_error))
+                sys.exit(1)
+        else:
+            logger.error("コメントRawデータの構造が不正です: {}".format(e))
+            sys.exit(1)
 
 
 
@@ -594,6 +670,7 @@ def main():
             logger.warning("HTMLページの生成は成功しましたが、staticファイルの反映に問題が発生しました。既存ファイルは可能な限り保持しています。")
     else:
         logger.error("HTMLページの生成に失敗しました。")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
