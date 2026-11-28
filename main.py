@@ -206,6 +206,27 @@ def validate_optional_metadata(data: Any, label: str) -> Dict:
 
     return data
 
+def load_optional_reply_data(filepath: str) -> Any:
+    """返信Rawが任意JSONとして使える場合に読み込み、nullや失敗は警告してNoneを返します。"""
+    if not os.path.exists(filepath):
+        logger.warning("返信Rawファイルがありません。親スレッドRaw内に含まれる返信のみ表示します。")
+        return None
+
+    try:
+        data = load_json_data(filepath)
+    except JSONInputError as e:
+        logger.warning("返信Rawを読み込めません。ファイル '{}'、原因: {}: {}。インライン返信のみで続行します。".format(
+            e.filepath, type(e.cause).__name__, e.cause
+        ))
+        return None
+
+    if data is None:
+        logger.warning("返信Raw '{}' のトップレベル値がnullです。インライン返信のみで続行します。".format(
+            filepath
+        ))
+    return data
+
+
 def get_video_id_from_data_folder(folder_name: str) -> Optional[str]:
     """
     データフォルダ名から動画IDを取得します。
@@ -591,21 +612,7 @@ def main():
         sys.exit(1)
 
     # 返信Rawは任意。欠落・読み込み失敗・トップレベルnull時はインライン返信のみを使用する。
-    replies_data = None
-    if os.path.exists(replies_json_path):
-        try:
-            replies_data = load_json_data(replies_json_path)
-            if replies_data is None:
-                logger.warning("返信Raw '{}' のトップレベル値がnullです。インライン返信のみで続行します。".format(
-                    replies_json_path
-                ))
-        except JSONInputError as e:
-            logger.warning("返信Rawを読み込めません。ファイル '{}'、原因: {}: {}。インライン返信のみで続行します。".format(
-                e.filepath, type(e.cause).__name__, e.cause
-            ))
-            replies_data = None
-    else:
-        logger.warning("返信Rawファイルがありません。親スレッドRaw内に含まれる返信のみ表示します。")
+    replies_data = load_optional_reply_data(replies_json_path)
 
     # 動画・チャンネル情報は任意。HTML生成で参照する内部構造が不正なら空情報として続行する。
     videos_data = validate_optional_metadata(
