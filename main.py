@@ -160,8 +160,8 @@ def load_optional_json_data(filepath: str) -> Any:
     try:
         return load_json_data(filepath)
     except JSONInputError as e:
-        logger.warning("任意JSONを利用できません。ファイル '{}'、原因: {}。この情報なしで続行します。".format(
-            e.filepath, e.cause
+        logger.warning("任意JSONを利用できません。ファイル '{}'、原因: {}: {}。この情報なしで続行します。".format(
+            e.filepath, type(e.cause).__name__, e.cause
         ))
         return None
 
@@ -544,8 +544,8 @@ def main():
     try:
         comments_data = load_json_data(comments_json_path)
     except JSONInputError as e:
-        logger.error("必須コメントRawを読み込めません。ファイル '{}'、原因: {}".format(
-            e.filepath, e.cause
+        logger.error("必須コメントRawを読み込めません。ファイル '{}'、原因: {}: {}".format(
+            e.filepath, type(e.cause).__name__, e.cause
         ))
         sys.exit(1)
 
@@ -555,8 +555,8 @@ def main():
         try:
             replies_data = load_json_data(replies_json_path)
         except JSONInputError as e:
-            logger.warning("返信Rawを読み込めません。ファイル '{}'、原因: {}。インライン返信のみで続行します。".format(
-                e.filepath, e.cause
+            logger.warning("返信Rawを読み込めません。ファイル '{}'、原因: {}: {}。インライン返信のみで続行します。".format(
+                e.filepath, type(e.cause).__name__, e.cause
             ))
             replies_data = None
     else:
