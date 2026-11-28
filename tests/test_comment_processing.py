@@ -40,6 +40,38 @@ def make_reply_page(*items):
     return {"items": list(items)}
 
 
+class JSONInputLoadingTests(unittest.TestCase):
+    def test_loads_valid_empty_json_list(self):
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as file:
+            file.write("[]")
+            filepath = file.name
+        try:
+            self.assertEqual(main.load_json_data(filepath), [])
+        finally:
+            os.remove(filepath)
+
+    def test_missing_json_raises_with_path_and_cause(self):
+        filepath = os.path.join(tempfile.gettempdir(), "pager-missing-input-test.json")
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        with self.assertRaises(main.JSONInputError) as raised:
+            main.load_json_data(filepath)
+        self.assertEqual(raised.exception.filepath, filepath)
+        self.assertIsInstance(raised.exception.cause, FileNotFoundError)
+
+    def test_invalid_json_raises_with_path_and_cause(self):
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as file:
+            file.write("{invalid json")
+            filepath = file.name
+        try:
+            with self.assertRaises(main.JSONInputError) as raised:
+                main.load_json_data(filepath)
+            self.assertEqual(raised.exception.filepath, filepath)
+            self.assertIsInstance(raised.exception.cause, json.JSONDecodeError)
+        finally:
+            os.remove(filepath)
+
+
 class DataFolderNameTests(unittest.TestCase):
     def test_extracts_video_id_from_current_timestamp_folder(self):
         self.assertEqual(
@@ -296,6 +328,25 @@ class MainVideoIdValidationTests(unittest.TestCase):
 
             self.assertEqual(raised.exception.code, 1)
             load_json_data.assert_not_called()
+
+class MainRequiredInputTests(unittest.TestCase):
+    def test_exits_with_filename_and_cause_when_required_comments_file_is_missing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            folder_path = os.path.join(
+                temp_dir,
+                "youtube_data_9SAhwYXG4Uc_2026-11-27_01_46_19",
+            )
+            os.makedirs(folder_path)
+            with patch("main.tk.Tk"):
+                with patch("main.filedialog.askdirectory", return_value=folder_path):
+                    with self.assertLogs("main", level="ERROR") as captured:
+                        with self.assertRaises(SystemExit) as raised:
+                            main.main()
+            self.assertEqual(raised.exception.code, 1)
+            self.assertTrue(any("comments_raw_9SAhwYXG4Uc.json" in message
+                                and "FileNotFoundError" in message
+                                for message in captured.output), captured.output)
+
 
 if __name__ == "__main__":
     unittest.main()

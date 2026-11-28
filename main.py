@@ -137,21 +137,32 @@ def sync_static_files(source_dir: str, target_dir: str) -> None:
                     logger.warning("静的ファイル更新用の一時ファイルを削除できません: {}".format(temporary_path))
 
 
+class JSONInputError(Exception):
+    """JSON入力の読み込み失敗。対象パスと原因を保持します。"""
+
+    def __init__(self, filepath: str, cause: Exception):
+        self.filepath = filepath
+        self.cause = cause
+        super().__init__("{}: {}".format(filepath, cause))
+
+
 def load_json_data(filepath: str) -> Any:
-    """
-    指定されたJSONファイルからデータを読み込みます。
-    """
+    """JSON読み込み失敗をNoneに変換せず、対象ファスと原因を例外で伝えます。"""
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
-    except FileNotFoundError:
-        logger.debug(f"ファイルが見つかりません - {filepath}")
-        return None
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        logger.debug(f"JSON形式または文字コードが不正です - {filepath}")
-        return None
-    except OSError as e:
-        logger.debug(f"ファイルを読み込めません - {filepath}: {e}")
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise JSONInputError(filepath, e) from e
+
+
+def load_optional_json_data(filepath: str) -> Any:
+    """任意JSONの読み込み失敗を警告し、Noneとして返します。"""
+    try:
+        return load_json_data(filepath)
+    except JSONInputError as e:
+        logger.warning("任意JSONを利用できません。ファイル '{}'、原因: {}。この情報なしで続行します。".format(
+            e.filepath, e.cause
+        ))
         return None
 
 def get_video_id_from_data_folder(folder_name: str) -> Optional[str]:
@@ -530,30 +541,36 @@ def main():
     )
 
     # コメントRawは必須。欠落・JSON不正をダミーコメントや正常な空データに置き換えない。
-    comments_data = load_json_data(comments_json_path)
-    if comments_data is None:
-        logger.error("コメントスレッドRawデータを読み込めません。ファイルの欠落またはJSON不正を確認してください。")
+    try:
+        comments_data = load_json_data(comments_json_path)
+    except JSONInputError as e:
+        logger.error("必須コメントRawを読み込めません。ファイル '{}'、原因: {}".format(
+            e.filepath, e.cause
+        ))
         sys.exit(1)
 
-    # 返信Rawファイルは取得データがある場合に保存されるため、存在しない場合は親スレッド内の返信だけを使用する。
+    # 返信Rawは任意。欠落・読み込み失敗時はインライン返信のみを使用する。
     replies_data = None
     if os.path.exists(replies_json_path):
-        replies_data = load_json_data(replies_json_path)
-        if replies_data is None:
-            logger.error("返信RawデータのJSON形式が不正です。")
-            sys.exit(1)
+        try:
+            replies_data = load_json_data(replies_json_path)
+        except JSONInputError as e:
+            logger.warning("返信Rawを読み込めません。ファイル '{}'、原因: {}。インライン返信のみで続行します。".format(
+                e.filepath, e.cause
+            ))
+            replies_data = None
     else:
         logger.warning("返信Rawファイルがありません。親スレッドRaw内に含まれる返信のみ表示します。")
 
-    # 動画・チャンネル情報は任意。欠落時は空の情報として扱い、コメント処理は継続する。
-    videos_data = load_json_data(videos_json_path) if os.path.exists(videos_json_path) else None
-    if videos_data is None:
-        logger.warning("動画情報Rawデータがありません、または読み込めません。動画情報なしで続行します。")
+    # 動画・チャンネル情報は任意。欠落・読み込み失敗・items構造不正時は空情報として続行する。
+    videos_data = load_optional_json_data(videos_json_path)
+    if not isinstance(videos_data, dict) or not isinstance(videos_data.get("items"), list):
+        logger.warning("動画情報Rawの構造が不正、または情報がありません。動画情報なしで続行します。")
         videos_data = {"items": []}
 
-    channel_data = load_json_data(channel_json_path) if channel_json_path and os.path.exists(channel_json_path) else None
-    if channel_data is None:
-        logger.warning("チャンネル情報Rawデータがありません、または読み込めません。チャンネル情報なしで続行します。")
+    channel_data = load_optional_json_data(channel_json_path) if channel_json_path else None
+    if not isinstance(channel_data, dict) or not isinstance(channel_data.get("items"), list):
+        logger.warning("チャンネル情報Rawの構造が不正、または情報がありません。チャンネル情報なしで続行します。")
         channel_data = {"items": []}
 
     try:

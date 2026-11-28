@@ -50,18 +50,13 @@ PyInstallerでビルドされた実行ファイルを使用する場合：
   * 実行ファイルのあるディレクトリ/templates/example.html (カスタマイズされたテンプレートがあれば)  
 * **static フォルダ**:  
   * 実行ファイルのあるディレクトリ/static/css/style.css  
-* **default フォルダ**:  
-  * 実行ファイルのあるディレクトリ/default/dummy\_comments.json  
-  * 実行ファイルのあるディレクトリ/default/dummy\_video\_info.json  
-  * 実行ファイルのあるディレクトリ/default/dummy\_channel\_info.json  
-  * 実行ファイルのあるディレクトリ/default/pager-template.html  
-  * 実行ファイルのあるディレクトリ/default/style.css  
-  * （これらのファイルは、pager-template-maker の default フォルダからコピーしてください。）
-
+* **default フォルダ**:
+  * dummy_comments.json、dummy_video_info.json、dummy_channel_info.json、pager-template.html、style.css などを配置します。
+  * これらは pager-template-maker との連携やサンプル素材用です。選択した動画データフォルダの入力JSONが欠落・不正な場合に、ダミーJSONを代替入力として使用することはありません。
 Pythonスクリプトとして直接実行する場合（開発用）：  
 youtube-comments-pager ディレクトリの直下に、上記のフォルダ構造（rawdata, templates, static, default）を作成し、それぞれのファイルを配置してください。youtube\_data\_\<動画ID\>\_\<YYYY-MM-DD_HH_MM_SS\> フォルダは rawdata フォルダ内に作成することを推奨します。
 
-コメントスレッドRawファイルは複数ページを含む場合があります。ページャーは各ページのitemsを処理し、親コメントIDの重複は先に出現したレコードを採用して二重表示を避けます。返信Rawファイルは `parent_id` と `raw_responses` を持つレコードのリストです。返信Rawと親スレッド内の返信プレビューは返信IDで統合し、外部返信Rawが部分保存でもプレビューにしかない返信を保持します。返信IDが重複する場合も二重表示を避け、重複を警告します。最後に保存されたRawページに `nextPageToken` が残る場合は、後続ページが保存されていない可能性を警告しますが、scraper全体の取得状態は判定しません。コメントスレッドRawファイルが欠落・JSON不正の場合は、ダミーコメントへ置き換えずエラーとして扱います。
+コメントスレッドRawファイルは複数ページを含む場合があります。ページャーは各ページのitemsを処理し、親コメントIDの重複は先に出現したレコードを採用して二重表示を避けます。返信Rawファイルは `parent_id` と `raw_responses` を持つレコードのリストです。返信Rawと親スレッド内の返信プレビューは返信IDで統合し、外部返信Rawが部分保存でもプレビューにしかない返信を保持します。返信IDが重複する場合も二重表示を避け、重複を警告します。最後に保存されたRawページに `nextPageToken` が残る場合は、後続ページが保存されていない可能性を警告しますが、scraper全体の取得状態は判定しません。コメントスレッドRawファイルが欠落・JSON不正・読み込み不能の場合は、対象ファイル名と原因をERRORログに出して終了し、ダミーコメントへ置き換えません。正常な空リスト `[]` は有効な入力として扱います。返信Rawは任意で、欠落または読み込み失敗時はWARNINGを出してインライン返信のみを使用します。動画情報・チャンネル情報も任意で、欠落・読み込み失敗・`items`構造不正時はWARNINGを出し、その情報なしで続行します。
 
 ## **3.3. HTMLページの生成**
 
