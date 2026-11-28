@@ -147,7 +147,7 @@ class JSONInputError(Exception):
 
 
 def load_json_data(filepath: str) -> Any:
-    """JSON読み込み失敗をNoneに変換せず、対象ファスと原因を例外で伝えます。"""
+    """JSON読み込み失敗をNoneに変換せず、対象パスと原因を例外で伝えます。"""
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
@@ -576,8 +576,16 @@ def main():
     try:
         processed_comments = process_youtube_comments(comments_data, replies_data)
     except ValueError as e:
-        logger.error("コメントRawデータの構造が不正です: {}".format(e))
-        sys.exit(1)
+        if replies_data is not None:
+            logger.warning("返信Rawの構造が不正です: {}。返信Rawを除外し、インライン返信のみで再処理します。".format(e))
+            try:
+                processed_comments = process_youtube_comments(comments_data, None)
+            except ValueError as comments_error:
+                logger.error("コメントRawデータの構造が不正です: {}".format(comments_error))
+                sys.exit(1)
+        else:
+            logger.error("コメントRawデータの構造が不正です: {}".format(e))
+            sys.exit(1)
 
 
 
