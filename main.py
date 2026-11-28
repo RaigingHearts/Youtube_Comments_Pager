@@ -48,6 +48,11 @@ def _is_link_or_reparse_point(path: str) -> bool:
     return stat.S_ISLNK(path_stat.st_mode) or bool(file_attributes & reparse_flag)
 
 
+def _raise_walk_error(error: OSError) -> None:
+    """os.walkの走査エラーを握りつぶさず、同期処理を中断します。"""
+    raise error
+
+
 def sync_static_files(source_dir: str, target_dir: str) -> None:
     """
     同梱staticを生成先へ反映し、同梱ファイル以外は保持します。
@@ -61,7 +66,7 @@ def sync_static_files(source_dir: str, target_dir: str) -> None:
 
     source_files = []
     source_directories = []
-    for current_dir, directory_names, file_names in os.walk(source_dir):
+    for current_dir, directory_names, file_names in os.walk(source_dir, onerror=_raise_walk_error):
         directory_names.sort()
         file_names.sort()
         relative_dir = os.path.relpath(current_dir, source_dir)
