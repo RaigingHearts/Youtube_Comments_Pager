@@ -144,7 +144,7 @@ python -m unittest discover -s tests -t . -v
 
 **テスト実行状況（2026-11-27）**: ユーザーのWindows環境で上記コマンドを実行し、**13件すべて成功（Ran 13 tests / OK）**を確認しました。
 
-**追加テスト確認（2026-11-28）**: 第三者レビューのLow指摘に対応する動画ID不一致テストを追加し、Python 3.8のユーザー環境で同じコマンドを実行しました。**16件すべて成功（Ran 16 tests / OK）**を確認しました。テスト `test_exits_when_folder_and_video_info_filename_ids_mismatch` では、フォルダ名と `video_info_raw_*.json` の動画ID不一致時に終了コード `1` で中断し、JSON読み込みへ進まないことを検証します。
+**追加テスト確認（2026-11-28）**: 第三者レビューのLow指摘に対応する動画ID不一致テスト、および外部返信Rawの同一返信IDが異なる親コメントに現れるケースの回帰テストを追加しました。Python 3.8のユーザー環境で再実行し、**17件すべて成功（Ran 17 tests / OK）**を確認しました。`test_exits_when_folder_and_video_info_filename_ids_mismatch` は動画ID不一致時に終了コード `1` で中断し、JSON読み込みへ進まないことを検証します。`test_duplicate_external_reply_id_keeps_first_parent_and_warns` は先出し親を保持し、後発親の重複を除外してWARNINGを出すことを検証します。
 
 ### **実データ・部分Rawの確認記録（2026-11-27）**
 
@@ -162,3 +162,15 @@ python -m unittest discover -s tests -t . -v
 * **選択するフォルダ名は youtube\_data\_\<動画ID\>\_\<YYYY-MM-DD_HH_MM_SS\> の形式に従う必要があります。** 旧形式の日付のみ（YYYY-MM-DD）のフォルダも読み込み対象として受け付けます。 異なる名前のフォルダを選択した場合、エラーメッセージが表示され、プログラムが終了します。
 
 ご不明な点がございましたら、お気軽にお問い合わせください。
+
+### **Windowsコンソールでの日本語ログ表示**
+
+- Git Bash環境でのPython標準出力・標準エラーの既定エンコーディングは `cp932` でした。`PYTHONIOENCODING=utf-8` を指定するとPythonの標準出力・標準エラーがUTF-8になり、日本語の直接出力が正常に表示されることを確認しました。
+- Git Bashでユニットテストを実行する場合は、次のように指定できます。
+
+```bash
+PYTHONIOENCODING=utf-8 python -m unittest discover -s tests -v
+```
+
+- PowerShellを使用したConEmu統合ターミナルでは、同じ17件のユニットテストが成功し、日本語ログも確認できました。
+- 以上はGit BashのPython標準ストリーム設定を特定した結果です。ConEmu全般の表示問題の原因を特定した、という意味ではありません。
