@@ -37,6 +37,13 @@ class SyncStaticFilesTests(unittest.TestCase):
             except (OSError, NotImplementedError):
                 self.skipTest("ディレクトリシンボリックリンクを作成できない環境です")
 
+    def remove_directory_link(self, link_path):
+        """TemporaryDirectoryの後始末時にリンク先を辿らないよう、リンク自体を先に削除する。"""
+        if sys.platform == "win32":
+            os.rmdir(link_path)  # junction自体を削除し、リンク先のディレクトリは保持する
+        else:
+            os.unlink(link_path)
+
     def test_creates_target_and_copies_bundled_files(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             source = os.path.join(temp_dir, "source")
@@ -149,14 +156,16 @@ class SyncStaticFilesTests(unittest.TestCase):
             self.write_file(os.path.join(outside, "css", "style.css"), "external-original")
             os.makedirs(os.path.dirname(target))
             self.create_directory_link(target, outside)
+            try:
+                with self.assertRaises(OSError):
+                    main.sync_static_files(source, target)
 
-            with self.assertRaises(OSError):
-                main.sync_static_files(source, target)
-
-            self.assertEqual(
-                self.read_file(os.path.join(outside, "css", "style.css")),
-                "external-original",
-            )
+                self.assertEqual(
+                    self.read_file(os.path.join(outside, "css", "style.css")),
+                    "external-original",
+                )
+            finally:
+                self.remove_directory_link(target)
 
     def test_rejects_nested_directory_link_without_modifying_external_files(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -166,19 +175,22 @@ class SyncStaticFilesTests(unittest.TestCase):
             self.write_file(os.path.join(source, "css", "style.css"), "bundled-css")
             self.write_file(os.path.join(target, "keep.txt"), "existing-user-file")
             self.write_file(os.path.join(outside, "style.css"), "external-original")
-            self.create_directory_link(os.path.join(target, "css"), outside)
+            link_path = os.path.join(target, "css")
+            self.create_directory_link(link_path, outside)
+            try:
+                with self.assertRaises(OSError):
+                    main.sync_static_files(source, target)
 
-            with self.assertRaises(OSError):
-                main.sync_static_files(source, target)
-
-            self.assertEqual(
-                self.read_file(os.path.join(outside, "style.css")),
-                "external-original",
-            )
-            self.assertEqual(
-                self.read_file(os.path.join(target, "keep.txt")),
-                "existing-user-file",
-            )
+                self.assertEqual(
+                    self.read_file(os.path.join(outside, "style.css")),
+                    "external-original",
+                )
+                self.assertEqual(
+                    self.read_file(os.path.join(target, "keep.txt")),
+                    "existing-user-file",
+                )
+            finally:
+                self.remove_directory_link(link_path)
 
 if __name__ == "__main__":
     unittest.main()
