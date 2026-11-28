@@ -192,5 +192,32 @@ class SyncStaticFilesTests(unittest.TestCase):
             finally:
                 self.remove_directory_link(link_path)
 
+
+    def test_source_walk_error_aborts_before_existing_files_are_changed(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = os.path.join(temp_dir, "source")
+            target = os.path.join(temp_dir, "output", "static")
+            self.write_file(os.path.join(source, "css", "style.css"), "bundled-css")
+            self.write_file(os.path.join(target, "css", "style.css"), "existing-css")
+            self.write_file(os.path.join(target, "custom.css"), "user-file")
+
+            def walk_with_error(path, onerror=None):
+                if onerror is not None:
+                    onerror(OSError("simulated source traversal failure"))
+                return iter(())
+
+            with patch("main.os.walk", side_effect=walk_with_error):
+                with self.assertRaisesRegex(OSError, "simulated source traversal failure"):
+                    main.sync_static_files(source, target)
+
+            self.assertEqual(
+                self.read_file(os.path.join(target, "css", "style.css")),
+                "existing-css",
+            )
+            self.assertEqual(
+                self.read_file(os.path.join(target, "custom.css")),
+                "user-file",
+            )
+
 if __name__ == "__main__":
     unittest.main()
