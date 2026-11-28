@@ -73,6 +73,44 @@ class JSONInputLoadingTests(unittest.TestCase):
             os.remove(filepath)
 
 
+class OptionalMetadataValidationTests(unittest.TestCase):
+    def test_discards_video_metadata_when_snippet_is_not_an_object(self):
+        malformed = {"items": [{"snippet": "unexpected string"}]}
+        with self.assertLogs("main", level="WARNING") as captured:
+            result = main.validate_optional_metadata(malformed, "動画情報Raw")
+        self.assertEqual(result, {"items": []})
+        self.assertTrue(any("snippetがオブジェクトではありません" in message
+                           for message in captured.output), captured.output)
+
+    def test_discards_channel_metadata_when_high_thumbnail_is_not_an_object(self):
+        malformed = {
+            "items": [{"snippet": {"thumbnails": {"high": "unexpected string"}}}]
+        }
+        with self.assertLogs("main", level="WARNING") as captured:
+            result = main.validate_optional_metadata(malformed, "チャンネル情報Raw")
+        self.assertEqual(result, {"items": []})
+        self.assertTrue(any("thumbnails.high" in message for message in captured.output),
+                        captured.output)
+
+    def test_preserves_valid_empty_items(self):
+        data = {"items": []}
+        self.assertIs(main.validate_optional_metadata(data, "動画情報Raw"), data)
+
+    def test_warns_when_existing_reply_raw_contains_json_null(self):
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as file:
+            file.write("null")
+            filepath = file.name
+        try:
+            with self.assertLogs("main", level="WARNING") as captured:
+                result = main.load_optional_reply_data(filepath)
+            self.assertIsNone(result)
+            self.assertTrue(any("トップレベル値がnull" in message
+                               and filepath in message
+                               for message in captured.output), captured.output)
+        finally:
+            os.remove(filepath)
+
+
 class DataFolderNameTests(unittest.TestCase):
     def test_extracts_video_id_from_current_timestamp_folder(self):
         self.assertEqual(
@@ -347,6 +385,30 @@ class MainRequiredInputTests(unittest.TestCase):
             self.assertTrue(any("comments_raw_9SAhwYXG4Uc.json" in message
                                 and "FileNotFoundError" in message
                                 for message in captured.output), captured.output)
+
+
+class MainHtmlGenerationFailureTests(unittest.TestCase):
+    def test_exits_nonzero_when_html_generation_fails(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            folder_path = os.path.join(
+                temp_dir,
+                "youtube_data_9SAhwYXG4Uc_2026-11-27_01_46_19",
+            )
+            os.makedirs(folder_path)
+            comments_path = os.path.join(folder_path, "comments_raw_9SAhwYXG4Uc.json")
+            video_path = os.path.join(folder_path, "video_info_raw_9SAhwYXG4Uc.json")
+            with open(comments_path, "w", encoding="utf-8") as file:
+                file.write("[]")
+            with open(video_path, "w", encoding="utf-8") as file:
+                file.write('{"items": []}')
+
+            with patch("main.tk.Tk"):
+                with patch("main.filedialog.askdirectory", return_value=folder_path):
+                    with patch("main.generate_html_page", return_value=None):
+                        with self.assertRaises(SystemExit) as raised:
+                            main.main()
+
+            self.assertEqual(raised.exception.code, 1)
 
 
 if __name__ == "__main__":
