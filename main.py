@@ -165,6 +165,47 @@ def load_optional_json_data(filepath: str) -> Any:
         ))
         return None
 
+def validate_optional_metadata(data: Any, label: str) -> Dict:
+    """HTML生成で参照する範囲の任意メタデータ構造を検証します。"""
+    def invalid(reason: str) -> Dict:
+        logger.warning("{}の構造が不正です（{}）。{}情報なしで続行します。".format(
+            label, reason, label
+        ))
+        return {"items": []}
+
+    if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+        return invalid("itemsがリストではありません")
+
+    items = data["items"]
+    if not items:
+        return data
+
+    first_item = items[0]
+    if not isinstance(first_item, dict):
+        return invalid("items[0]がオブジェクトではありません")
+
+    if "snippet" not in first_item:
+        return data
+
+    snippet = first_item["snippet"]
+    if not isinstance(snippet, dict):
+        return invalid("items[0].snippetがオブジェクトではありません")
+
+    if label == "動画情報Raw":
+        description = snippet.get("description", "")
+        if not isinstance(description, str):
+            return invalid("snippet.descriptionが文字列ではありません")
+    elif label == "チャンネル情報Raw":
+        thumbnails = snippet.get("thumbnails")
+        if thumbnails is not None:
+            if not isinstance(thumbnails, dict):
+                return invalid("snippet.thumbnailsがオブジェクトではありません")
+            high = thumbnails.get("high")
+            if high is not None and not isinstance(high, dict):
+                return invalid("snippet.thumbnails.highがオブジェクトではありません")
+
+    return data
+
 def get_video_id_from_data_folder(folder_name: str) -> Optional[str]:
     """
     データフォルダ名から動画IDを取得します。
@@ -549,11 +590,15 @@ def main():
         ))
         sys.exit(1)
 
-    # 返信Rawは任意。欠落・読み込み失敗時はインライン返信のみを使用する。
+    # 返信Rawは任意。欠落・読み込み失敗・トップレベルnull時はインライン返信のみを使用する。
     replies_data = None
     if os.path.exists(replies_json_path):
         try:
             replies_data = load_json_data(replies_json_path)
+            if replies_data is None:
+                logger.warning("返信Raw '{}' のトップレベル値がnullです。インライン返信のみで続行します。".format(
+                    replies_json_path
+                ))
         except JSONInputError as e:
             logger.warning("返信Rawを読み込めません。ファイル '{}'、原因: {}: {}。インライン返信のみで続行します。".format(
                 e.filepath, type(e.cause).__name__, e.cause
@@ -562,16 +607,15 @@ def main():
     else:
         logger.warning("返信Rawファイルがありません。親スレッドRaw内に含まれる返信のみ表示します。")
 
-    # 動画・チャンネル情報は任意。欠落・読み込み失敗・items構造不正時は空情報として続行する。
-    videos_data = load_optional_json_data(videos_json_path)
-    if not isinstance(videos_data, dict) or not isinstance(videos_data.get("items"), list):
-        logger.warning("動画情報Rawの構造が不正、または情報がありません。動画情報なしで続行します。")
-        videos_data = {"items": []}
+    # 動画・チャンネル情報は任意。HTML生成で参照する内部構造が不正なら空情報として続行する。
+    videos_data = validate_optional_metadata(
+        load_optional_json_data(videos_json_path), "動画情報Raw"
+    )
 
-    channel_data = load_optional_json_data(channel_json_path) if channel_json_path else None
-    if not isinstance(channel_data, dict) or not isinstance(channel_data.get("items"), list):
-        logger.warning("チャンネル情報Rawの構造が不正、または情報がありません。チャンネル情報なしで続行します。")
-        channel_data = {"items": []}
+    channel_data = validate_optional_metadata(
+        load_optional_json_data(channel_json_path) if channel_json_path else None,
+        "チャンネル情報Raw"
+    )
 
     try:
         processed_comments = process_youtube_comments(comments_data, replies_data)
@@ -619,6 +663,7 @@ def main():
             logger.warning("HTMLページの生成は成功しましたが、staticファイルの反映に問題が発生しました。既存ファイルは可能な限り保持しています。")
     else:
         logger.error("HTMLページの生成に失敗しました。")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
