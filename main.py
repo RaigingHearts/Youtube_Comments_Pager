@@ -372,7 +372,7 @@ def main():
     root.withdraw()
 
     print("動画データ（JSONファイル）が格納されているフォルダを選択してください。")
-    print("フォルダ名は 'youtube_data_<動画ID>_<Y-m-d>' の形式である必要があります。")
+    print("フォルダ名は 'youtube_data_<動画ID>_<YYYY-MM-DD_HH_MM_SS>' の形式です（旧形式のYYYY-MM-DDも読み込み可能です）。")
 
     # ファイルダイアログを開き、フォルダを選択させる
     # initialdir に RAWDATA_DIR を指定することで、デフォルトの開始フォルダを提示できる
