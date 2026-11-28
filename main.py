@@ -5,6 +5,7 @@ import os
 import re  # 正規表現モジュールをインポート
 import shutil  # ファイル操作（フォルダのコピー）のためにインポート
 import sys  # sysモジュールをインポート
+import tempfile  # 静的ファイル更新時の一時ファイル作成
 import tkinter as tk  # tkinterをインポート
 from tkinter import filedialog  # filedialogをインポート
 from typing import (Any, Dict,  # Pylanceの型問題検出対策とList, Dict, Optionalのインポート
@@ -30,6 +31,71 @@ DEFAULT_DATA_DIR = os.path.join(APPLICATION_ROOT_DIR, 'default') # デフォル�
 RAWDATA_DIR = os.path.join(APPLICATION_ROOT_DIR, 'rawdata')
 
 # OUTPUT_DIR は動的に設定されるため、ここでは初期化しない
+
+def sync_static_files(source_dir: str, target_dir: str) -> None:
+    """
+    同梱staticを生成先へ反映し、同梱ファイル以外は保持します。
+
+    同じ相対パスにある同梱ファイルは置き換えます。各ファイルの置き換えは
+    os.replace()で行いますが、複数ファイル全体を一括で原子的に更新するものではありません。
+    """
+    if not os.path.isdir(source_dir):
+        raise FileNotFoundError("同梱staticフォルダが見つかりません: {}".format(source_dir))
+
+    source_files = []
+    source_directories = []
+    for current_dir, directory_names, file_names in os.walk(source_dir):
+        directory_names.sort()
+        file_names.sort()
+        relative_dir = os.path.relpath(current_dir, source_dir)
+        if relative_dir != ".":
+            source_directories.append(relative_dir)
+        for file_name in file_names:
+            source_path = os.path.join(current_dir, file_name)
+            relative_path = os.path.relpath(source_path, source_dir)
+            source_files.append((source_path, relative_path))
+
+    if os.path.exists(target_dir) and not os.path.isdir(target_dir):
+        raise OSError("生成先staticのパスがディレクトリではありません: {}".format(target_dir))
+
+    # 既存データへの変更前に、同梱ファイル・ディレクトリとの型衝突を確認する。
+    for relative_dir in source_directories:
+        destination = os.path.join(target_dir, relative_dir)
+        if os.path.exists(destination) and not os.path.isdir(destination):
+            raise OSError("同梱ディレクトリと既存ファイルが衝突しています: {}".format(destination))
+
+    for source_path, relative_path in source_files:
+        destination = os.path.join(target_dir, relative_path)
+        if os.path.exists(destination) and not os.path.isfile(destination):
+            raise OSError("同梱ファイルと既存ディレクトリ等が衝突しています: {}".format(destination))
+
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+
+    for relative_dir in source_directories:
+        destination = os.path.join(target_dir, relative_dir)
+        if not os.path.exists(destination):
+            os.makedirs(destination)
+
+    for source_path, relative_path in source_files:
+        destination = os.path.join(target_dir, relative_path)
+        destination_dir = os.path.dirname(destination)
+        temporary_path = None
+        try:
+            file_descriptor, temporary_path = tempfile.mkstemp(
+                prefix=".static-update-", dir=destination_dir
+            )
+            os.close(file_descriptor)
+            shutil.copyfile(source_path, temporary_path)
+            os.replace(temporary_path, destination)
+            temporary_path = None
+        finally:
+            if temporary_path and os.path.exists(temporary_path):
+                try:
+                    os.remove(temporary_path)
+                except OSError:
+                    logger.warning("静的ファイル更新用の一時ファイルを削除できません: {}".format(temporary_path))
+
 
 def load_json_data(filepath: str) -> Any:
     """
@@ -477,26 +543,15 @@ def main():
     if generated_filepath:
         logger.info(f"HTMLページが正常に生成されました: {generated_filepath}")
 
-        # Staticフォルダを、生成されたindex.htmlと同じフォルダにコピー
+        # 同梱staticを生成先へ同期し、利用者独自のファイルは保持する
         target_static_dir = os.path.join(selected_folder_path, 'static')
-        
-        if os.path.exists(target_static_dir):
-            logger.info(f"既存の '{target_static_dir}' フォルダを削除しています...")
-            try:
-                shutil.rmtree(target_static_dir)
-                logger.info("既存フォルダの削除が完了しました。")
-            except OSError as e:
-                logger.error(f"既存のstaticフォルダを削除できませんでした: {e}")
-                logger.warning("HTMLページの生成は成功しましたが、staticファイルのコピーに問題が発生しました。手動でコピーしてください。")
-                return # 処理を中断するか、エラーを報告して続行しない
-
         try:
-            logger.info(f"'{STATIC_DIR}' から '{target_static_dir}' へ静的ファイルをコピーしています...")
-            shutil.copytree(STATIC_DIR, target_static_dir)
-            logger.info("静的ファイルのコピーが完了しました。")
-        except Exception as e:
-            logger.error(f"静的ファイルのコピー中に問題が発生しました: {e}")
-            logger.warning("HTMLページの生成は成功しましたが、staticファイルのコピーに問題が発生しました。手動でコピーしてください。")
+            logger.info(f"'{STATIC_DIR}' から '{target_static_dir}' へ静的ファイルを反映しています...")
+            sync_static_files(STATIC_DIR, target_static_dir)
+            logger.info("静的ファイルの反映が完了しました。")
+        except (OSError, shutil.Error) as e:
+            logger.error(f"静的ファイルの反映中に問題が発生しました: {e}")
+            logger.warning("HTMLページの生成は成功しましたが、staticファイルの反映に問題が発生しました。既存ファイルは可能な限り保持しています。")
     else:
         logger.error("HTMLページの生成に失敗しました。")
 
